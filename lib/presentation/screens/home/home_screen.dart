@@ -723,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, index) {
               final request = pendingRequests[index];
               return Container(
-                width: 350, // ek card ki width
+                width: 370, // ek card ki width
                 margin: const EdgeInsets.only(right: 12),
                 child: _buildRideRequestCard(request),
               );

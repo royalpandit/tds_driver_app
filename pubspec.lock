@@ -580,26 +580,26 @@ packages:
     dependency: "direct main"
     description:
       name: mappls_gl
-      sha256: "4bbba7771200bf412d4834a3858970f8225a1643c8cdb125d867b65795c89da9"
+      sha256: fdd61a37917b029392b528d30f53075a5eb0275687db300df4dcbd63d543ecc8
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.3"
   mappls_gl_platform_interface:
     dependency: transitive
     description:
       name: mappls_gl_platform_interface
-      sha256: "43e744b2aaf31747fd04337f60fc5d8ef6dd92ce8797e19a3111c8e1d8dbf540"
+      sha256: "8a16953a6560c0781d6a0b247d007ba947cd01ab6a83881ac6030e51b42fc1ef"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "2.0.1"
   mappls_gl_web:
     dependency: transitive
     description:
       name: mappls_gl_web
-      sha256: "94adee3b369eff4aee1ad81ce97cc1f889c2274cf9f17912aeb660ff6d821b6b"
+      sha256: c0245212fe06793270ff81dfe4c158d45240c0cf1cb69aa4aea9e1e68c8c6c43
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.1"
   matcher:
     dependency: transitive
     description:

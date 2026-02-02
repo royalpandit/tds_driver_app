@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import '../../data/models/driver_model.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/services/api_service.dart';
@@ -388,23 +389,46 @@ class DriverProvider with ChangeNotifier {
   }
 
   // Get trip details
-  Future<TripDetails?> getTripDetails(int tripId) async {
+  TripDetailsResponseModel? tripDetails;
+
+  Future<void> getTripDetails(int tripId) async {
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final details = await _apiService.getTripDetails(tripId);
+
+      tripDetails = await _apiService.getTripDetails(tripId);
+
       _isLoading = false;
       notifyListeners();
-      return details;
+
     } catch (e) {
+
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return null;
     }
   }
+
+  // Future<TripDetails?> getTripDetails(int tripId) async {
+  //   _isLoading = true;
+  //   _errorMessage = null;
+  //   notifyListeners();
+  //
+  //   try {
+  //     final details = await _apiService.getTripDetails(tripId);
+  //     _isLoading = false;
+  //     notifyListeners();
+  //     return details;
+  //   } catch (e) {
+  //     _isLoading = false;
+  //     _errorMessage = e.toString();
+  //     notifyListeners();
+  //     return null;
+  //   }
+  // }
 
   Future<bool> updateTripStatus(int tripId, String status, {String? otp, String? cancelReason}) async {
     _isLoading = true;

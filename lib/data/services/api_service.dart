@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import '../../core/constants/api_constants.dart';
 import '../models/ride_booking_model.dart';
 import '../models/driver_model.dart';
@@ -858,24 +859,48 @@ class ApiService {
     final data = responseData['data'] as List<dynamic>;
     return data.map((item) => Trip.fromJson(item)).toList();
   }
+  Future<TripDetailsResponseModel> getTripDetails(int tripId) async {
 
-  Future<TripDetails> getTripDetails(int tripId) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripDetails}$tripId');
-    // print('🌐 TDS API: GET $url');
+    final url = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.tripDetails}$tripId'
+    );
+
     final headers = await _getHeaders();
-    // print('📋 Headers: $headers');
-    final response = await _client.get(url, headers: headers).timeout(
+
+    final response = await _client.get(
+      url,
+      headers: headers,
+    ).timeout(
       const Duration(seconds: 15),
       onTimeout: () {
-        throw Exception('Request timeout: Unable to fetch trip details. Please check your internet connection.');
+        throw Exception('Request timeout: Unable to fetch trip details');
       },
     );
-    // print('📊 Response Status: ${response.statusCode}');
-    // print('📄 Response Body: ${response.body}');
 
     final responseData = _handleResponse(response);
-    return TripDetails.fromJson(responseData['data']);
+
+    return TripDetailsResponseModel.fromJson(
+        responseData['data']
+    );
   }
+
+  // Future<TripDetails> getTripDetails(int tripId) async {
+  //   final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripDetails}$tripId');
+  //   // print('🌐 TDS API: GET $url');
+  //   final headers = await _getHeaders();
+  //   // print('📋 Headers: $headers');
+  //   final response = await _client.get(url, headers: headers).timeout(
+  //     const Duration(seconds: 15),
+  //     onTimeout: () {
+  //       throw Exception('Request timeout: Unable to fetch trip details. Please check your internet connection.');
+  //     },
+  //   );
+  //   // print('📊 Response Status: ${response.statusCode}');
+  //   // print('📄 Response Body: ${response.body}');
+  //
+  //   final responseData = _handleResponse(response);
+  //   return TripDetails.fromJson(responseData['data']);
+  // }
 
   Future<dynamic> updateTripStatus(int tripId, String status, {String? otp, String? cancelReason}) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripUpdateStatus}');

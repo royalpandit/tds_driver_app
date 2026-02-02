@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
+import 'package:traveldesk_driver/presentation/screens/home/trip_details_screen.dart';
 
 import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
@@ -221,8 +222,184 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       ),
     );
   }
-
   Widget _buildTripCard(Trip trip) {
+
+    Color statusColor;
+    IconData statusIcon;
+
+    switch (trip.status.toLowerCase()) {
+      case 'completed':
+        statusColor = Colors.green;
+        statusIcon = Ionicons.checkmark_circle_outline;
+        break;
+      case 'cancelled':
+        statusColor = Colors.red;
+        statusIcon = Ionicons.close_circle_outline;
+        break;
+      case 'planned':
+        statusColor = Colors.orange;
+        statusIcon = Ionicons.time_outline;
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusIcon = Ionicons.time_outline;
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TripDetailsScreen(
+              tripId: trip.id, // 👈 Trip ID yahan pass ho rahi hai
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // ===== Header =====
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Ionicons.car_outline,
+                        color: AppColors.lightPrimary, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Trip #${trip.id}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(statusIcon, size: 16, color: statusColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        trip.status,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // ===== Driver Info =====
+            Row(
+              children: [
+                const Icon(Ionicons.person_outline, color: Colors.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${trip.driver.name} • ${trip.employeesCount} passengers',
+                    style: GoogleFonts.poppins(color: Colors.grey[700]),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // ===== Trip Details =====
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+
+                  Row(
+                    children: [
+                      const Icon(Ionicons.calendar_outline,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        app_date_utils.AppDateUtils.formatDate(trip.tripDate),
+                        style: GoogleFonts.poppins(),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Icon(Ionicons.car_outline,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${trip.vehicle.model} - ${trip.vehicle.numberPlate}',
+                          style: GoogleFonts.poppins(),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      const Icon(Ionicons.navigate_outline,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        trip.tripType,
+                        style: GoogleFonts.poppins(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            _buildTripActionButtons(trip),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTripCards(Trip trip) {
     Color statusColor;
     IconData statusIcon;
 
@@ -596,10 +773,34 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       },
     );
   }
-
   void _startTrip(int tripId) async {
-    _showOtpDialog(tripId);
+    try {
+      //  FIRST API CALL (WITHOUT OTP)
+      bool success = await Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).updateTripStatus(tripId, 'running');
+
+      if (success) {
+        // ✅ API success → now open OTP popup
+        _showOtpDialog(tripId);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Trip start failed',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
+
+  // void _startTrip(int tripId) async {
+  //   _showOtpDialog(tripId);
+  // }
 
   void _proceedToStartTrip(int tripId, String otp) async {
     try {
