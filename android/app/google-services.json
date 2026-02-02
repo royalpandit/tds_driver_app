@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "456204258662",
+    "project_id": "tdsdriver",
+    "storage_bucket": "tdsdriver.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:456204258662:android:6cb80575b56c970523cca7",
+        "android_client_info": {
+          "package_name": "com.traveldesk.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
