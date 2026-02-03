@@ -41,7 +41,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: AppColors.lightPrimary,
-        title: const Text('Trip Details'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Trip Details',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Consumer<DriverProvider>(
         builder: (context, provider, child) {
@@ -52,6 +59,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
           if (provider.errorMessage != null) {
             return Center(child: Text(provider.errorMessage!));
+          }
+
+          if (provider.tripDetails == null) {
+            return const Center(child: Text("No trip details available"));
           }
 
           final TripDetailsResponseModel details = provider.tripDetails!;
@@ -267,46 +278,56 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                passenger.name,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                passenger.status,
-                style: GoogleFonts.poppins(color: Colors.grey),
-              ),
-            ],
-          ),
-
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
-              ElevatedButton(
-                onPressed: () => _showOtpDialog(passenger.id),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
-                child: const Text("Verify OTP"),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    passenger.name,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    passenger.status,
+                    style: GoogleFonts.poppins(color: Colors.grey),
+                  ),
+                ],
               ),
-
-              const SizedBox(width: 8),
-
-              OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text("Cancel Trip"),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: ElevatedButton(
+                      onPressed: () => _showOtpDialog(passenger.id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: const Text("Verify"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 80,
+                    child: OutlinedButton(
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
+                      child: const Text("Cancel"),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -360,6 +381,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       context,
       listen: false,
     );
+
+    if (provider.tripDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Trip details not available"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final result = await provider.verifyOtp(
       widget.tripId,

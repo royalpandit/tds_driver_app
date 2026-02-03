@@ -16,8 +16,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  bool _isNavigating = false;
-
   @override
   void initState() {
     super.initState();
@@ -27,10 +25,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-
-    setState(() {
-      _isNavigating = true;
-    });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final driverProvider = Provider.of<DriverProvider>(context, listen: false);
@@ -124,21 +118,6 @@ class _SplashScreenState extends State<SplashScreen> {
                         color: Colors.orange,
                       ),
                     ),
-                    if (_isNavigating) ...[
-                      const SizedBox(height: 20),
-                      const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Loading...',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

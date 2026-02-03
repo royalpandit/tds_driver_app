@@ -110,12 +110,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       
                       const SizedBox(height: 25),
 
-                      // --- Fuel History ---
-                      _buildSectionTitle('Fuel History'),
-                      const SizedBox(height: 10),
-                      _buildFuelHistorySection(),
+                      // // --- Fuel History ---
+                      // _buildSectionTitle('Fuel History'),
+                      // const SizedBox(height: 10),
+                      // _buildFuelHistorySection(),
                       
-                      const SizedBox(height: 25),
+                      // const SizedBox(height: 25),
 
                       // --- Ongoing Trip (only show if there are running trips) ---
                       Consumer<driver_provider.DriverProvider>(
@@ -507,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               ElevatedButton(
-                onPressed: () => _respondToRideRequest(request.offerId, 'reject'),
+                onPressed: () => _rejectRide(request),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.withValues(alpha: 0.1),
                   foregroundColor: Colors.red,
@@ -521,7 +521,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: () => _respondToRideRequest(request.offerId, 'accept'),
+                onPressed: () => _acceptRide(request),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -539,27 +539,319 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _respondToRideRequest(int offerId, String action) async {
-    final provider = context.read<driver_provider.DriverProvider>();
-    final success = await provider.respondToRideRequest(offerId, action);
-    
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Ride request ${action}ed successfully',
-            style: GoogleFonts.poppins(color: Colors.white),
+  void _acceptRide(RideRequestOffer requestOffer) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.checkmark_circle_outline, color: Colors.green),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Accept Ride Request',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
-          backgroundColor: action == 'accept' ? Colors.green : Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+          content: Text(
+            'Are you sure you want to accept this ride request?',
+            style: GoogleFonts.poppins(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+
+                final driverProvider =
+                Provider.of<driver_provider.DriverProvider>(context, listen: false);
+
+                final success = await driverProvider.acceptRideStep1(
+                  requestOffer.offerId,
+                );
+
+                if (success) {
+                  _showOtpDialogForAcceptance(requestOffer);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to send OTP')),
+                  );
+                }
+              },
+              child: Text(
+                'Accept',
+                style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _rejectRide(RideRequestOffer requestOffer) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.close_circle_outline, color: Colors.red),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Reject Ride Request',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to reject this ride request?',
+            style: GoogleFonts.poppins(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Close dialog first
+                Navigator.pop(context);
+
+                // Capture context safely before async operation
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                // Show loading indicator
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Rejecting ride request...',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.orange,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+
+                // Perform the async operation
+                final driverProvider = Provider.of<driver_provider.DriverProvider>(context, listen: false);
+                final success = await driverProvider.respondToRideRequest(requestOffer.offerId, 'reject');
+
+                if (success) {
+                  if (mounted) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Ride request rejected.',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          driverProvider.errorMessage ?? 'Failed to reject ride request. Please try again.',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text(
+                'Reject',
+                style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showOtpDialogForAcceptance(RideRequestOffer requestOffer) {
+    final TextEditingController otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.shield_checkmark_outline, color: Colors.blue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Enter OTP to Accept Ride',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Please enter the OTP sent to the customer to verify and accept this ride request.',
+                style: GoogleFonts.poppins(color: Colors.grey[700], fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  labelText: 'OTP',
+                  hintText: 'Enter 6-digit OTP',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: Icon(Ionicons.key_outline),
+                ),
+                style: GoogleFonts.poppins(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final otp = otpController.text.trim();
+                if (otp.isEmpty || otp.length != 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a valid 6-digit OTP',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.orange,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                _proceedToAcceptRideRequest(requestOffer, otp);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'Verify & Accept',
+                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _proceedToAcceptRideRequest(RideRequestOffer requestOffer, String otp) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Row(
+            children: [
+              CircularProgressIndicator(color: Colors.green),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  'Accepting ride request...',
+                  style: GoogleFonts.poppins(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      // Accept the ride request with OTP verification
+      final driverProvider = Provider.of<driver_provider.DriverProvider>(context, listen: false);
+      final acceptSuccess = await driverProvider.acceptRideWithOtp(
+        requestOffer.offerId,
+        otp,
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      if (acceptSuccess) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              'Ride request accepted successfully!',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      } else {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              driverProvider.errorMessage ?? 'Failed to accept ride request. Please try again.',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Failed to ${action} ride request',
+            'An error occurred: $e',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: Colors.red,
@@ -569,6 +861,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
+
+
 
   void _startTrip(int tripId) async {
     try {
