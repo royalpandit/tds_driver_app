@@ -237,7 +237,7 @@ class AuthProvider with ChangeNotifier {
     required String aadharNumber,
     File? aadharFrontImage,
     File? aadharBackImage,
-    String? panNumber,
+    required String panNumber,
     File? panUpload,
     File? medicalCertificateUpload,
     File? policeVerificationUpload,

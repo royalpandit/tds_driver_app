@@ -336,7 +336,20 @@ class DriverProvider with ChangeNotifier {
       return true; // OTP popup open karne ke liye
     } catch (e) {
       _isLoading = false;
-      _errorMessage = e.toString();
+      // Extract user-friendly error message
+      String errorMsg = e.toString();
+      if (errorMsg.contains('Exception:')) {
+        errorMsg = errorMsg.replaceFirst('Exception:', '').trim();
+      }
+      if (errorMsg.contains('vehicle not assigned')) {
+        _errorMessage = 'Vehicle not assigned yet. Please contact admin.';
+      } else if (errorMsg.contains('timeout') || errorMsg.contains('Timeout')) {
+        _errorMessage = 'Request timeout. Please check your internet connection.';
+      } else if (errorMsg.contains('No route to host') || errorMsg.contains('SocketException')) {
+        _errorMessage = 'Network error. Please check your internet connection.';
+      } else {
+        _errorMessage = errorMsg.length > 100 ? 'Failed to send OTP. Please try again.' : errorMsg;
+      }
       notifyListeners();
       return false;
     }
@@ -360,7 +373,24 @@ class DriverProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _errorMessage = e.toString();
+      // Extract user-friendly error message
+      String errorMsg = e.toString();
+      if (errorMsg.contains('Exception:')) {
+        errorMsg = errorMsg.replaceFirst('Exception:', '').trim();
+      }
+      if (errorMsg.contains('Invalid OTP') || errorMsg.contains('invalid otp')) {
+        _errorMessage = 'Invalid OTP. Please check and try again.';
+      } else if (errorMsg.contains('OTP expired') || errorMsg.contains('otp expired')) {
+        _errorMessage = 'OTP expired. Please request a new OTP.';
+      } else if (errorMsg.contains('vehicle not assigned')) {
+        _errorMessage = 'Vehicle not assigned yet. Please contact admin.';
+      } else if (errorMsg.contains('timeout') || errorMsg.contains('Timeout')) {
+        _errorMessage = 'Request timeout. Please check your internet connection.';
+      } else if (errorMsg.contains('No route to host') || errorMsg.contains('SocketException')) {
+        _errorMessage = 'Network error. Please check your internet connection.';
+      } else {
+        _errorMessage = errorMsg.length > 100 ? 'Failed to accept ride. Please try again.' : errorMsg;
+      }
       notifyListeners();
       return false;
     }

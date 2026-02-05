@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import 'register_otp_screen.dart';
+import 'login_screen.dart';
 
 import 'dart:io';
 
@@ -60,8 +60,10 @@ class _RegisterStep3ScreenState extends State<RegisterStep3Screen> {
   final _vehicleColorController = TextEditingController();
   final _vehicleYearController = TextEditingController();
   final _bankNameController = TextEditingController();
+  final _accountHolderNameController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _ifscCodeController = TextEditingController();
+  final _branchNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _stateController = TextEditingController();
   final _cityController = TextEditingController();
@@ -78,8 +80,10 @@ class _RegisterStep3ScreenState extends State<RegisterStep3Screen> {
     _vehicleColorController.dispose();
     _vehicleYearController.dispose();
     _bankNameController.dispose();
+    _accountHolderNameController.dispose();
     _accountNumberController.dispose();
     _ifscCodeController.dispose();
+    _branchNameController.dispose();
     _addressController.dispose();
     _stateController.dispose();
     _cityController.dispose();
@@ -90,73 +94,231 @@ class _RegisterStep3ScreenState extends State<RegisterStep3Screen> {
   void _submit() async {
     // Validate current form
     if (!_formKey.currentState!.validate()) {
+      _showErrorSnackBar('Please fill all required fields in this step');
       return;
     }
 
-    // Validate that all required data from previous steps is present
-    if (widget.firstName.isEmpty ||
-        widget.lastName.isEmpty ||
-        widget.email.isEmpty ||
-        widget.phone.isEmpty ||
-        widget.password.isEmpty ||
-        widget.licenseNumber.isEmpty ||
-        widget.aadharNumber.isEmpty ||
-        widget.gender <= 0 ||
-        widget.gender > 2 ||
-        _addressController.text.isEmpty ||
-        _stateController.text.isEmpty ||
-        _cityController.text.isEmpty ||
-        _pincodeController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please complete all required fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    // Validate all required fields from all steps
+    String? errorMessage = _validateAllSteps();
+    if (errorMessage != null) {
+      _showErrorSnackBar(errorMessage);
       return;
     }
 
-    // Navigate to OTP screen with all collected data
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RegisterOtpScreen(
-          firstName: widget.firstName,
-          middleName: widget.middleName,
-          lastName: widget.lastName,
-          email: widget.email,
-          phone: widget.phone,
-          password: widget.password,
-          gender: widget.gender,
-          dob: widget.dob,
-          bloodGroup: widget.bloodGroup,
-          licenseNumber: widget.licenseNumber,
-          aadharNumber: widget.aadharNumber,
-          panNumber: widget.panNumber,
-          emergencyContact: widget.emergencyContact,
-          emergencyContactName: widget.emergencyContactName,
-          vehicleNumber: _vehicleNumberController.text,
-          vehicleModel: _vehicleModelController.text,
-          vehicleColor: _vehicleColorController.text,
-          vehicleYear: _vehicleYearController.text,
-          bankName: _bankNameController.text,
-          accountNumber: _accountNumberController.text,
-          ifscCode: _ifscCodeController.text,
-          address: _addressController.text,
-          state: _stateController.text,
-          city: _cityController.text,
-          pincode: _pincodeController.text,
-          licenseFrontImage: widget.licenseFrontImage,
-          licenseBackImage: widget.licenseBackImage,
-          aadharFrontImage: widget.aadharFrontImage,
-          aadharBackImage: widget.aadharBackImage,
-        ),
-      ),
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    // Call registerDriver API directly
+    final success = await auth.registerDriver(
+      firstName: widget.firstName,
+      middleName: widget.middleName.isNotEmpty ? widget.middleName : null,
+      lastName: widget.lastName,
+      email: widget.email,
+      password: widget.password,
+      phoneCode: '+91', // Assuming Indian phone code
+      phone: widget.phone,
+      gender: widget.gender,
+      dob: widget.dob.isNotEmpty ? widget.dob : null,
+      bloodGroup: widget.bloodGroup.isNotEmpty ? widget.bloodGroup : null,
+      licenseNumber: widget.licenseNumber,
+      licenseFrontImage: widget.licenseFrontImage,
+      licenseBackImage: widget.licenseBackImage,
+      aadharNumber: widget.aadharNumber,
+      aadharFrontImage: widget.aadharFrontImage,
+      aadharBackImage: widget.aadharBackImage,
+      panNumber: widget.panNumber.trim().toUpperCase(),
+      state: _stateController.text.trim(),
+      city: _cityController.text.trim(),
+      pincode: _pincodeController.text.trim(),
+      address: _addressController.text.trim(),
+      bankName: _bankNameController.text.trim(),
+      accountHolderName: _accountHolderNameController.text.trim(),
+      accountNumber: _accountNumberController.text.trim(),
+      ifscCode: _ifscCodeController.text.trim(),
+      branchName: _branchNameController.text.trim(),
+      driverType: 'regular', // Default driver type
+      econtact: widget.emergencyContact.isNotEmpty ? widget.emergencyContact : null,
     );
+
+    if (success) {
+      // Registration successful, navigate to login screen
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Success!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Driver registration successful!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please login to continue and start accepting rides.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close dialog
+                      // Navigate to login screen
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (_) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Go to Login',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } else {
+      // Show error message with detailed information
+      if (mounted) {
+        String errorMessage = 'Registration failed. Please try again.';
+        
+        if (auth.errorMessage != null) {
+          // Check if error message contains validation errors
+          if (auth.errorMessage!.contains('email has already been taken')) {
+            errorMessage = 'This email is already registered. Please use a different email or login.';
+          } else if (auth.errorMessage!.contains('phone')) {
+            errorMessage = 'This phone number is already registered.';
+          } else if (auth.errorMessage!.contains('license')) {
+            errorMessage = 'License number validation failed. Please check and try again.';
+          } else {
+            errorMessage = auth.errorMessage!;
+          }
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _previousStep() {
     Navigator.pop(context);
+  }
+
+  String? _validateAllSteps() {
+    // Validate Step 1 data
+    if (widget.firstName.trim().isEmpty) {
+      return 'First Name is required (Step 1)';
+    }
+    if (widget.lastName.trim().isEmpty) {
+      return 'Last Name is required (Step 1)';
+    }
+    if (widget.email.trim().isEmpty) {
+      return 'Email is required (Step 1)';
+    }
+    if (widget.phone.trim().isEmpty) {
+      return 'Phone number is required (Step 1)';
+    }
+    if (widget.password.isEmpty) {
+      return 'Password is required (Step 1)';
+    }
+    if (widget.gender <= 0 || widget.gender > 2) {
+      return 'Gender is required (Step 1)';
+    }
+    
+    // Validate Step 2 data
+    if (widget.licenseNumber.trim().isEmpty) {
+      return 'License Number is required (Step 2)';
+    }
+    if (widget.aadharNumber.trim().isEmpty) {
+      return 'Aadhaar Number is required (Step 2)';
+    }
+    if (widget.panNumber.trim().isEmpty) {
+      return 'PAN Number is required (Step 2)';
+    }
+    
+    return null;
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
   }
 
   @override
@@ -543,6 +705,7 @@ class _RegisterStep3ScreenState extends State<RegisterStep3Screen> {
                   controller: _ifscCodeController,
                   keyboardType: TextInputType.text,
                   textCapitalization: TextCapitalization.characters,
+                  maxLength: 11,
                   style: GoogleFonts.inter(fontSize: 16),
                   decoration: InputDecoration(
                     hintText: 'Enter IFSC code',
@@ -558,7 +721,7 @@ class _RegisterStep3ScreenState extends State<RegisterStep3Screen> {
                     if (value == null || value.isEmpty) {
                       return 'IFSC code is required';
                     }
-                    if (value.length != 11) {
+                    if (value.trim().length != 11) {
                       return 'IFSC code must be 11 characters';
                     }
                     return null;

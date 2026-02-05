@@ -67,18 +67,73 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
     super.dispose();
   }
 
+  String? _validateStep2Fields() {
+    if (_licenseNumberController.text.trim().isEmpty) {
+      return 'License number is required';
+    }
+    if (_aadharNumberController.text.trim().isEmpty) {
+      return 'Aadhaar number is required';
+    }
+    if (_aadharNumberController.text.trim().replaceAll(' ', '').length != 12) {
+      return 'Aadhaar number must be 12 digits';
+    }
+    if (_panNumberController.text.trim().isEmpty) {
+      return 'PAN number is required';
+    }
+    if (_panNumberController.text.trim().length != 10) {
+      return 'PAN number must be 10 characters';
+    }
+    
+    // Validate all required images
+    if (_licenseFrontImage == null) {
+      return 'Please upload License Front Image';
+    }
+    if (_licenseBackImage == null) {
+      return 'Please upload License Back Image';
+    }
+    if (_aadharFrontImage == null) {
+      return 'Please upload Aadhaar Front Image';
+    }
+    if (_aadharBackImage == null) {
+      return 'Please upload Aadhaar Back Image';
+    }
+    return null;
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
+  }
+
   void _nextStep() {
-    if (_formKey.currentState!.validate()) {
-      if (_licenseFrontImage == null || _licenseBackImage == null || _aadharFrontImage == null || _aadharBackImage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please upload all required images.'), backgroundColor: Colors.red),
-        );
-        return;
-      }
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RegisterStep3Screen(
+    // Validate form fields
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnackBar('Please fill all required fields marked with *');
+      return;
+    }
+
+    // Additional field validations
+    String? errorMessage = _validateStep2Fields();
+    if (errorMessage != null) {
+      _showErrorSnackBar(errorMessage);
+      return;
+    }
+
+    // All validation passed, move to next step
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterStep3Screen(
             // Pass all data from step 1
             firstName: widget.firstName,
             middleName: widget.middleName,
@@ -90,11 +145,11 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
             dob: widget.dob,
             bloodGroup: widget.bloodGroup,
             // Add step 2 data
-            licenseNumber: _licenseNumberController.text,
-            aadharNumber: _aadharNumberController.text,
-            panNumber: _panNumberController.text,
-            emergencyContact: _emergencyContactController.text,
-            emergencyContactName: _emergencyContactNameController.text,
+            licenseNumber: _licenseNumberController.text.trim(),
+            aadharNumber: _aadharNumberController.text.trim(),
+            panNumber: _panNumberController.text.trim(),
+            emergencyContact: _emergencyContactController.text.trim(),
+            emergencyContactName: _emergencyContactNameController.text.trim(),
             licenseFrontImage: _licenseFrontImage!,
             licenseBackImage: _licenseBackImage!,
             aadharFrontImage: _aadharFrontImage!,
@@ -102,7 +157,6 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
           ),
         ),
       );
-    }
   }
 
   void _previousStep() {
@@ -263,7 +317,7 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'PAN Number',
+                    'PAN Number *',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -276,9 +330,10 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
                   controller: _panNumberController,
                   keyboardType: TextInputType.text,
                   textCapitalization: TextCapitalization.characters,
+                  maxLength: 10,
                   style: GoogleFonts.inter(fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: 'Enter your PAN number (optional)',
+                    hintText: 'Enter your 10-character PAN number',
                     filled: true,
                     fillColor: Colors.grey.shade100,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -287,6 +342,15 @@ class _RegisterStep2ScreenState extends State<RegisterStep2Screen> {
                       borderSide: BorderSide.none,
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'PAN number is required';
+                    }
+                    if (value.trim().length != 10) {
+                      return 'PAN number must be 10 characters';
+                    }
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 20),

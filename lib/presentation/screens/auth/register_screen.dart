@@ -47,37 +47,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _nextStep() {
-    if (_formKey.currentState!.validate()) {
-      // Validate gender selection
-      if (_gender != 1 && _gender != 2) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select your gender'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RegisterStep2Screen(
-            // Pass data to next step
-            firstName: _firstNameController.text,
-            middleName: _middleNameController.text,
-            lastName: _lastNameController.text,
-            email: _emailController.text,
-            phone: _phoneController.text,
-            password: _passwordController.text,
-            gender: _gender,
-            dob: _dobController.text,
-            bloodGroup: _bloodGroupController.text,
-          ),
-        ),
-      );
+  String? _validateStep1Fields() {
+    if (_firstNameController.text.trim().isEmpty) {
+      return 'First name is required';
     }
+    if (_lastNameController.text.trim().isEmpty) {
+      return 'Last name is required';
+    }
+    if (_emailController.text.trim().isEmpty) {
+      return 'Email address is required';
+    }
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(_emailController.text.trim())) {
+      return 'Please enter a valid email address';
+    }
+    if (_phoneController.text.trim().isEmpty) {
+      return 'Phone number is required';
+    }
+    if (_phoneController.text.trim().length < 10) {
+      return 'Phone number must be at least 10 digits';
+    }
+    if (_passwordController.text.isEmpty) {
+      return 'Password is required';
+    }
+    if (_passwordController.text.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    if (_gender != 1 && _gender != 2) {
+      return 'Please select your gender';
+    }
+    return null;
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
+  }
+
+  void _nextStep() {
+    // Validate form fields
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnackBar('Please fill all required fields marked with *');
+      return;
+    }
+
+    // Additional field validations
+    String? errorMessage = _validateStep1Fields();
+    if (errorMessage != null) {
+      _showErrorSnackBar(errorMessage);
+      return;
+    }
+
+    // All validation passed, move to next step
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterStep2Screen(
+          // Pass data to next step
+          firstName: _firstNameController.text.trim(),
+          middleName: _middleNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: _emailController.text.trim(),
+          phone: _phoneController.text.trim(),
+          password: _passwordController.text,
+          gender: _gender,
+          dob: _dobController.text.trim(),
+          bloodGroup: _selectedBloodGroup ?? '',
+        ),
+      ),
+    );
   }
 
   @override

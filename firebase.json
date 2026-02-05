@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"tdsdriver","appId":"1:456204258662:android:6cb80575b56c970523cca7","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"tdsdriver","configurations":{"android":"1:456204258662:android:6cb80575b56c970523cca7","ios":"1:456204258662:ios:8925df0805e15ec923cca7"}}}}}}

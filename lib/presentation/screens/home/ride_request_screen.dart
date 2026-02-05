@@ -477,7 +477,7 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               Expanded(
                 child: _buildRideDetail(
                   Ionicons.car_outline,
-                  request.vehicleType,
+                  request.vehicleType.isEmpty ? 'Vehicle not assigned yet' : request.vehicleType,
                 ),
               ),
               Expanded(
@@ -934,10 +934,27 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
+      // Extract user-friendly error message
+      String errorMsg = e.toString();
+      if (errorMsg.contains('Exception:')) {
+        errorMsg = errorMsg.replaceFirst('Exception:', '').trim();
+      }
+      
+      String displayMessage;
+      if (errorMsg.contains('vehicle not assigned')) {
+        displayMessage = 'Vehicle not assigned yet. Please contact admin.';
+      } else if (errorMsg.contains('timeout') || errorMsg.contains('Timeout')) {
+        displayMessage = 'Request timeout. Please check your internet connection.';
+      } else if (errorMsg.contains('No route to host') || errorMsg.contains('SocketException')) {
+        displayMessage = 'Network error. Please check your internet connection.';
+      } else {
+        displayMessage = errorMsg.length > 100 ? 'An error occurred. Please try again.' : errorMsg;
+      }
+
       scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(
-            'An error occurred. Please try again.',
+            displayMessage,
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: Colors.red,
