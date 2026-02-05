@@ -9,7 +9,6 @@ import '../../../core/constants/app_colors.dart' as app_colors;
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
 import 'all_trips_screen.dart' as all_trips;
-import 'ride_request_screen.dart' as ride_request;
 import '../../providers/driver_provider.dart' as driver_provider;
 // import '../../../data/models/trip_model.dart';
 
@@ -284,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSummaryCard(String title, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -299,24 +298,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 20, // Slightly smaller to prevent overflow
-              fontWeight: FontWeight.bold,
-              color: color,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             title,
             style: GoogleFonts.poppins(
-              fontSize: 12,
+              fontSize: 11,
               color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
           ),
         ],
       ),
@@ -362,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRideRequestCard(RideRequestOffer request) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -381,22 +382,28 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Ionicons.person_outline, color: app_colors.AppColors.lightPrimary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    request.rideRequest.customer?.name ?? 'Unknown Passenger',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+              Flexible(
+                child: Row(
+                  children: [
+                    Icon(Ionicons.person_outline, color: app_colors.AppColors.lightPrimary, size: 18),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        request.rideRequest.customer?.name ?? 'Unknown Passenger',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -404,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'Pending',
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: Colors.blue,
                   ),
@@ -413,11 +420,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Route Information
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.grey.shade50,
               borderRadius: BorderRadius.circular(12),
@@ -440,9 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         request.rideRequest.pickupAddress,
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: Colors.black87,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -472,9 +481,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         request.rideRequest.dropAddress,
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: Colors.black87,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -483,53 +494,60 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Date and Time
           Row(
             children: [
-              Icon(Ionicons.calendar_outline, size: 16, color: Colors.grey),
-              const SizedBox(width: 8),
-              Text(
-                '${app_date_utils.AppDateUtils.formatDate(request.rideRequest.rideDate)} at ${app_date_utils.AppDateUtils.formatTime(request.rideRequest.rideTime)}',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[700],
+              Icon(Ionicons.calendar_outline, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  '${app_date_utils.AppDateUtils.formatDate(request.rideRequest.rideDate)} at ${app_date_utils.AppDateUtils.formatTime(request.rideRequest.rideTime)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey[700],
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Action Buttons
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              ElevatedButton(
-                onPressed: () => _rejectRide(request),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withValues(alpha: 0.1),
-                  foregroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                child: Text(
-                  'Reject',
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _rejectRide(request),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.withValues(alpha: 0.1),
+                    foregroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  child: Text(
+                    'Reject',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _acceptRide(request),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                child: Text(
-                  'Accept',
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _acceptRide(request),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                  child: Text(
+                    'Accept',
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -1303,15 +1321,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         }
+        final screenWidth = MediaQuery.of(context).size.width;
+        final cardWidth = (screenWidth - 52).clamp(280.0, 370.0); // 52 = 20 left + 20 right + 12 margin
+        
         return SizedBox(
-          height: 270, // card height ke hisaab se adjust kar sakte ho
+          height: 270,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
             itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
             itemBuilder: (context, index) {
               final request = pendingRequests[index];
               return Container(
-                width: 370, // ek card ki width
+                width: cardWidth,
                 margin: const EdgeInsets.only(right: 12),
                 child: _buildRideRequestCard(request),
               );

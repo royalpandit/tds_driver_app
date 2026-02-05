@@ -44,6 +44,9 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
   void _loadCurrentTab() {
     final driverProvider = Provider.of<DriverProvider>(context, listen: false);
     
+    // Clear any previous error before loading
+    driverProvider.clearError();
+    
     switch (_tabController.index) {
       case 0: // Pending
         if (!_hasLoadedPending) {

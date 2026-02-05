@@ -77,7 +77,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 const SizedBox(height: 16),
 
 
-                _buildPassengerList(details),
+                _buildPassengerList(details, details.rideRequest.status),
                 const SizedBox(height: 16),
                 _buildTripInfo(details),
 
@@ -240,7 +240,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  Widget _buildPassengerList(TripDetailsResponseModel details) {
+  Widget _buildPassengerList(TripDetailsResponseModel details, String tripStatus) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -264,13 +264,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
           const SizedBox(height: 12),
 
-          ...details.trip.passengers.map((p) => _passengerRow(p)),
+          ...details.trip.passengers.map((p) => _passengerRow(p, tripStatus)),
         ],
       ),
     );
   }
 
-  Widget _passengerRow(PassengerModel passenger) {
+  Widget _passengerRow(PassengerModel passenger, String tripStatus) {
+    final isActiveTrip = tripStatus.toLowerCase() == 'running' || 
+                         tripStatus.toLowerCase() == 'in_progress' || 
+                         tripStatus.toLowerCase() == 'started';
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -300,35 +304,36 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: ElevatedButton(
-                      onPressed: () => _showOtpDialog(passenger.id),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        textStyle: const TextStyle(fontSize: 12),
+              if (isActiveTrip)
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      child: ElevatedButton(
+                        onPressed: () => _showOtpDialog(passenger.id),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: const Text("Verify"),
                       ),
-                      child: const Text("Verify"),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 80,
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        textStyle: const TextStyle(fontSize: 12),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 80,
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        child: const Text("Cancel"),
                       ),
-                      child: const Text("Cancel"),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ],
@@ -384,41 +389,64 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
     if (provider.tripDetails == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Trip details not available"),
+        SnackBar(
+          content: Text(
+            "Trip details not available",
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    final result = await provider.verifyOtp(
-      widget.tripId,
-      otp,
-      passengerId: passengerId,
-      rideRequestId: provider.tripDetails!.rideRequest.id,
-    );
-
-    if (result != null) {
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("OTP Verified Successfully"),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final result = await provider.verifyOtp(
+        widget.tripId,
+        otp,
+        passengerId: passengerId,
+        rideRequestId: provider.tripDetails!.rideRequest.id,
       );
 
-      // 🔄 Refresh trip details to update passenger status
-      provider.getTripDetails(widget.tripId);
+      if (result != null && mounted) {
 
-    } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "OTP Verified Successfully",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("OTP verification failed"),
-          backgroundColor: Colors.red,
-        ),
-      );
+        // 🔄 Refresh trip details to update passenger status
+        provider.getTripDetails(widget.tripId);
+
+      } else if (mounted) {
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.errorMessage ?? "OTP verification failed",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Error: ${e.toString()}",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

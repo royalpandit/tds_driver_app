@@ -429,7 +429,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -577,47 +577,77 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     final status = trip.status.toLowerCase();
 
     if (status == 'planned' || status == 'confirmed') {
-      // Show Call, Map, and Start Now buttons for planned trips
+      // Show Cancel on left, Call, Map, and Start Now on right for planned trips
       return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () => _callDriver(trip),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: () => _openMap(trip),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.green.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
-          ),
-          const SizedBox(width: 8),
           ElevatedButton(
-            onPressed: () => _startTrip(trip.id),
+            onPressed: () => _cancelTrip(trip.id),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: Colors.red.withValues(alpha: 0.1),
+              foregroundColor: Colors.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
             child: Text(
-              'Start Now',
+              'Cancel',
               style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
             ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => _callDriver(trip),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => _openMap(trip),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.green.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => _startTrip(trip.id),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: Text(
+                  'Start Now',
+                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         ],
       );
     } else if (status == 'running' || status == 'in_progress' || status == 'started') {
-      // Show End button for running trips
+      // Show Cancel on left and End on right for running trips
       return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          ElevatedButton(
+            onPressed: () => _cancelTrip(trip.id),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.withValues(alpha: 0.1),
+              foregroundColor: Colors.red,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => _completeTrip(trip.id),
             style: ElevatedButton.styleFrom(
@@ -656,6 +686,230 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           ),
         ],
       );
+    }
+  }
+
+  void _cancelTrip(int tripId) {
+    final TextEditingController reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Cancel Trip',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Please provide a reason for cancelling this trip:',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'e.g., Passenger not available',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Back',
+                style: GoogleFonts.poppins(),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final reason = reasonController.text.trim();
+                if (reason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a cancellation reason',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                _initiateTripCancellation(tripId, reason);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                'Continue',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _initiateTripCancellation(int tripId, String reason) async {
+    try {
+      // First API call to send OTP
+      bool success = await Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).updateTripStatus(tripId, 'cancelled', cancelReason: reason);
+
+      if (success) {
+        _showCancelOtpDialog(tripId, reason);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to initiate cancellation',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showCancelOtpDialog(int tripId, String reason) {
+    final TextEditingController otpController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Enter OTP to Cancel Trip',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Please enter the 6-digit OTP to verify and cancel the trip.',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: InputDecoration(
+                  hintText: 'Enter 6-digit OTP',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final otp = otpController.text.trim();
+                if (otp.isEmpty || otp.length != 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a valid 6-digit OTP',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                _proceedToCancelTrip(tripId, reason, otp);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(
+                'Verify & Cancel',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _proceedToCancelTrip(int tripId, String reason, String otp) async {
+    try {
+      await Provider.of<DriverProvider>(context, listen: false)
+          .updateTripStatus(tripId, 'cancelled', otp: otp, cancelReason: reason);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Trip cancelled successfully',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to cancel trip: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
