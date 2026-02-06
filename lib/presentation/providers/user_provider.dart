@@ -19,7 +19,7 @@ class UserProvider with ChangeNotifier {
     id: _driverDetails!.personalInfo.id,
     name: '${_driverDetails!.personalInfo.firstName} ${_driverDetails!.personalInfo.middleName ?? ''} ${_driverDetails!.personalInfo.lastName}',
     email: _driverDetails!.personalInfo.email,
-    phone: _driverDetails!.personalInfo.phone,
+    phone: _driverDetails!.personalInfo.phone ?? '',
     userType: 'driver',
   ) : null;
 

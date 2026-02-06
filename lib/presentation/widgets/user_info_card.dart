@@ -78,9 +78,9 @@ class UserInfoCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _buildStatItem('Trips', driverProvider.trips.length.toString()),
-                const SizedBox(width: 30),
-                _buildStatItem('Rating', '0.0'),
-                const SizedBox(width: 30),
+                // const SizedBox(width: 30),
+                // _buildStatItem('Rating', '0.0'),
+                const SizedBox(width: 60),
                 _buildStatItem('Status', _getStatusDisplay(driver?.status ?? 'Offline')),
               ],
             ),

@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_type_model.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import '../../core/constants/api_constants.dart';
 import '../models/ride_booking_model.dart';
@@ -697,12 +701,13 @@ class ApiService {
   }
 
   // Fuel API methods
-  Future<List<Map<String, dynamic>>> getFuelHistory({
+  Future<List<Map<String, dynamic>>> getFuelHistoryq({
     int? vehicleId,
     String? fromDate,
     String? toDate,
     int? perPage,
-  }) async {
+  }) async
+  {
     final queryParams = <String, String>{};
     if (vehicleId != null) queryParams['vehicle_id'] = vehicleId.toString();
     if (fromDate != null) queryParams['from_date'] = fromDate;
@@ -722,6 +727,30 @@ class ApiService {
     final data = responseData['data'] as List<dynamic>;
     return data.map((item) => item as Map<String, dynamic>).toList();
   }
+  Future<FuelHistoryResponse> getFuelHistory({
+    int? vehicleId,
+    String? fromDate,
+    String? toDate,
+    int? perPage,
+  }) async {
+
+    final queryParams = <String, String>{};
+
+    if (vehicleId != null) queryParams['vehicle_id'] = vehicleId.toString();
+    if (fromDate != null) queryParams['from_date'] = fromDate;
+    if (toDate != null) queryParams['to_date'] = toDate;
+    if (perPage != null) queryParams['per_page'] = perPage.toString();
+
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.fuel}')
+        .replace(queryParameters: queryParams);
+
+    final headers = await _getHeaders();
+    final response = await _client.get(url, headers: headers);
+
+    final responseData = _handleResponse(response);
+
+    return FuelHistoryResponse.fromJson(responseData);
+  }
 
   Future<dynamic> addFuelEntry({
     required int vehicleId,
@@ -736,7 +765,145 @@ class ApiService {
     String? note,
     bool? complete,
     File? image,
+  }) async
+  {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.fuel}');
+    print('🌐 TDS API: POST $url (ADD FUEL ENTRY)');
+
+    var request = http.MultipartRequest('POST', url);
+
+    final token = await _storageService.getToken();
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.headers['Accept'] = 'application/json';
+
+    // -------- TEXT FIELDS --------
+
+    request.fields.addAll({
+      'vehicle_id': vehicleId.toString(),
+      'start_meter': startMeter.toString(),
+      'qty': qty.toString(),
+      'cost_per_unit': costPerUnit.toString(),
+      'date': date,
+
+      if (fuelFrom != null && fuelFrom.isNotEmpty)
+        'fuel_from': fuelFrom,
+
+      if (fuelStationId != null)
+        'fuel_station_id': fuelStationId.toString(),
+
+      if (fuelTypeId != null)
+        'fuel_type_id': fuelTypeId.toString(),
+
+      if (reference != null && reference.isNotEmpty)
+        'reference': reference,
+
+      if (note != null && note.isNotEmpty)
+        'note': note,
+
+      // backend expects boolean usually as 1 / 0
+      if (complete != null)
+        'complete': complete ? '1' : '0',
+    });
+
+    // -------- FILE FIELD --------
+
+    if (image != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          image.path,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+    }
+
+    print('📝 Multipart Fields: ${request.fields}');
+    print('📎 Files count: ${request.files.length}');
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print('📊 Status: ${response.statusCode}');
+    print('📄 Body: ${response.body}');
+
+    return _handleResponse(response);
+  }
+// ================= FUEL STATION FLOW =================
+
+  Future<List<FuelStation>> getFuelStations() async {
+
+    final url = Uri.parse('${ApiConstants.baseUrl}/api/get-fuel-stations');
+
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers);
+
+    final data = _handleResponse(response);
+
+    final list = data['data'] as List;
+
+    return list.map((e) => FuelStation.fromJson(e)).toList();
+  }
+
+
+// ----------------------------------------------------
+
+  Future<List<FuelType>> getFuelTypes(int stationId) async {
+
+    final url = Uri.parse(
+      '${ApiConstants.baseUrl}/api/get-fuel-stations?station_id=$stationId',
+    );
+
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers);
+
+    final data = _handleResponse(response);
+
+    final types = data['data']['fuel_types'] as List;
+
+    return types.map((e) => FuelType.fromJson(e)).toList();
+  }
+
+
+// ----------------------------------------------------
+
+  Future<FuelPrice> getFuelPrice({
+    required int stationId,
+    required int fuelTypeId,
   }) async {
+
+    final url = Uri.parse(
+      '${ApiConstants.baseUrl}/api/get-fuel-stations?station_id=$stationId&fuel_type_id=$fuelTypeId',
+    );
+
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers);
+
+    final data = _handleResponse(response);
+
+    return FuelPrice.fromJson(data['data']);
+  }
+
+  Future<dynamic> addFuelEntryq({
+    required int vehicleId,
+    required double startMeter,
+    required double qty,
+    required double costPerUnit,
+    required String date,
+    String? fuelFrom,
+    int? fuelStationId,
+    int? fuelTypeId,
+    String? reference,
+    String? note,
+    bool? complete,
+    File? image,
+  }) async
+  {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.fuel}');
     print('🌐 TDS API: POST $url (ADD FUEL ENTRY)');
 
@@ -902,7 +1069,7 @@ class ApiService {
   //   return TripDetails.fromJson(responseData['data']);
   // }
 
-  Future<dynamic> updateTripStatus(int tripId, String status, {String? otp, String? cancelReason}) async {
+  Future<dynamic> updateTripStatusq(int tripId, String status, {String? otp, String? cancelReason}) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripUpdateStatus}');
     print('🌐 TDS API: POST $url (UPDATE TRIP STATUS)');
     final headers = await _getHeaders();
@@ -924,6 +1091,38 @@ class ApiService {
     print('📊 Response Status: ${response.statusCode}');
     print('📄 Response Body: ${response.body}');
     return _handleResponse(response);
+  }
+  Future<bool> updateTripStatus(
+      int tripId,
+      String status, {
+        String? otp,
+        String? cancelReason,
+      }) async {
+
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripUpdateStatus}');
+    print('🌐 TDS API: POST $url (UPDATE TRIP STATUS)');
+
+    final headers = await _getHeaders();
+    headers['Content-Type'] = 'application/json';
+
+    final body = jsonEncode({
+      'id': tripId,
+      'status': status,
+      if (otp != null) 'otp': otp,
+      if (cancelReason != null) 'cancel_reason': cancelReason,
+    });
+    print('📝 Request Body: $body');
+
+    final response = await _client.post(
+      url,
+      headers: headers,
+      body: body,
+    ).timeout(const Duration(seconds: 15));
+
+    final data = _handleResponse(response); // throws on error
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
+    return data['status'] == true; // 👈 success only
   }
 
   Future<dynamic> verifyTripOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId}) async {
@@ -1079,7 +1278,7 @@ class ApiService {
     }
   }
 
-  dynamic _handleResponse(http.Response response) {
+  dynamic _handleResponseq(http.Response response) {
     print('🔍 _handleResponse called with status: ${response.statusCode}');
     print('🔍 Response body: ${response.body}');
     
@@ -1108,6 +1307,81 @@ class ApiService {
       rethrow;
     }
   }
+  dynamic _handleResponse(http.Response response) {
+    print('🔍 StatusCode: ${response.statusCode}');
+    print('🔍 Body: ${response.body}');
+
+    try {
+      final body = jsonDecode(response.body);
+
+      // ----------------------------------
+      // 🔴 Case: status false (like Invalid OTP)
+      // ----------------------------------
+      if (body.containsKey('status') && body['status'] == false) {
+        print('❌ Backend failure (status=false): ${body['message']}');
+
+        // OTP specific (422 or message based)
+        if (body['code'] == 422 ||
+            body['message']?.toString().toLowerCase().contains('otp') == true) {
+          throw Exception(body['message'] ?? 'Invalid OTP');
+        }
+
+        throw Exception(body['message'] ?? 'Request failed');
+      }
+
+      // ----------------------------------
+      // 🔴 Case: success false
+      // ----------------------------------
+      if (body.containsKey('success') && body['success'] == false) {
+        print('❌ Backend failure (success=false): ${body['message']}');
+        throw Exception(body['message'] ?? 'Request failed');
+      }
+
+      // ----------------------------------
+      // 🟢 Case: status true
+      // ----------------------------------
+      if (body.containsKey('status') && body['status'] == true) {
+        print('✅ API success (status=true)');
+        return body;
+      }
+
+      // ----------------------------------
+      // 🟢 Case: success true
+      // ----------------------------------
+      if (body.containsKey('success') && body['success'] == true) {
+        print('✅ API success (success=true)');
+        return body;
+      }
+
+      // ----------------------------------
+      // 🟢 Case: code = 200 (like trip details)
+      // ----------------------------------
+      if (body.containsKey('code') && body['code'] == 200) {
+        print('✅ API success (code=200)');
+        return body;
+      }
+
+      // ----------------------------------
+      // 🔴 HTTP level failure
+      // ----------------------------------
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          body['message'] ?? 'Server error (${response.statusCode})',
+        );
+      }
+
+      // ----------------------------------
+      // 🔴 Unknown structure
+      // ----------------------------------
+      throw Exception(body['message'] ?? 'Unexpected server response');
+
+    } catch (e) {
+      print('❌ _handleResponse exception: $e');
+      throw Exception(e.toString());
+    }
+  }
+
+
 }
 
 
