@@ -1203,8 +1203,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       );
       return;
     }
+    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
 
-    Navigator.of(context).pop();
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context); // only closes dialog
+    }
+
+    // Navigator.of(context).pop();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -1238,7 +1243,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
     // ✅ Correct OTP → close popup
     Navigator.of(context).pop();
-
+    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Trip completed successfully'),

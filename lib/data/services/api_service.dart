@@ -1315,46 +1315,42 @@ class ApiService {
       final body = jsonDecode(response.body);
 
       // ----------------------------------
-      // 🔴 Case: status false (like Invalid OTP)
+      // 🔴 Case: success OR status false
       // ----------------------------------
-      if (body.containsKey('status') && body['status'] == false) {
-        print('❌ Backend failure (status=false): ${body['message']}');
+      if ((body.containsKey('success') && body['success'] == false) ||
+          (body.containsKey('status') && body['status'] == false)) {
 
-        // OTP specific (422 or message based)
-        if (body['code'] == 422 ||
-            body['message']?.toString().toLowerCase().contains('otp') == true) {
-          throw Exception(body['message'] ?? 'Invalid OTP');
+        final message = body['message'] ?? 'Request failed';
+        final code = body['code'];
+
+        print('❌ Backend failure: $message (code: $code)');
+
+        // ✅ OTP specific handling
+        if (code == 422 ||
+            message.toString().toLowerCase().contains('otp')) {
+          throw Exception(message);
         }
 
-        throw Exception(body['message'] ?? 'Request failed');
+        // ✅ Business logic 500 (like trip already assigned)
+        if (code == 500) {
+          throw Exception(message);
+        }
+
+        // default
+        throw Exception(message);
       }
 
       // ----------------------------------
-      // 🔴 Case: success false
+      // 🟢 Case: explicit success true
       // ----------------------------------
-      if (body.containsKey('success') && body['success'] == false) {
-        print('❌ Backend failure (success=false): ${body['message']}');
-        throw Exception(body['message'] ?? 'Request failed');
-      }
-
-      // ----------------------------------
-      // 🟢 Case: status true
-      // ----------------------------------
-      if (body.containsKey('status') && body['status'] == true) {
-        print('✅ API success (status=true)');
+      if ((body.containsKey('success') && body['success'] == true) ||
+          (body.containsKey('status') && body['status'] == true)) {
+        print('✅ API success');
         return body;
       }
 
       // ----------------------------------
-      // 🟢 Case: success true
-      // ----------------------------------
-      if (body.containsKey('success') && body['success'] == true) {
-        print('✅ API success (success=true)');
-        return body;
-      }
-
-      // ----------------------------------
-      // 🟢 Case: code = 200 (like trip details)
+      // 🟢 Case: code 200
       // ----------------------------------
       if (body.containsKey('code') && body['code'] == 200) {
         print('✅ API success (code=200)');
@@ -1362,7 +1358,7 @@ class ApiService {
       }
 
       // ----------------------------------
-      // 🔴 HTTP level failure
+      // 🔴 HTTP error fallback
       // ----------------------------------
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(
@@ -1371,7 +1367,7 @@ class ApiService {
       }
 
       // ----------------------------------
-      // 🔴 Unknown structure
+      // 🔴 Unknown response
       // ----------------------------------
       throw Exception(body['message'] ?? 'Unexpected server response');
 

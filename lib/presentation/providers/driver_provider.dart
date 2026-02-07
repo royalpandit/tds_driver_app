@@ -409,7 +409,7 @@ class DriverProvider with ChangeNotifier {
       } else if (errorMsg.contains('No route to host') || errorMsg.contains('SocketException')) {
         _errorMessage = 'Network error. Please check your internet connection.';
       } else {
-        _errorMessage = errorMsg.length > 100 ? 'Failed to accept ride. Please try again.' : errorMsg;
+        _errorMessage = errorMsg;
       }
       notifyListeners();
       return false;
