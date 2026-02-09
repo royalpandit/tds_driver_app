@@ -950,6 +950,42 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  // Update driver live location
+  Future<dynamic> updateDriverLocation({
+    required int driverId,
+    required double latitude,
+    required double longitude,
+    String? city,
+    String? state,
+    String? eloc,
+    String? address,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driverLocation}');
+    print('🌐 TDS API: POST $url (UPDATE DRIVER LOCATION)');
+    final headers = await _getHeaders();
+    headers['Content-Type'] = 'application/json';
+    print('📋 Headers: $headers');
+    final body = jsonEncode({
+      'driver_id': driverId,
+      'latitude': latitude,
+      'longitude': longitude,
+      if (city != null) 'city': city,
+      if (state != null) 'state': state,
+      if (eloc != null) 'eloc': eloc,
+      if (address != null) 'address': address,
+    });
+    print('📝 Request Body: $body');
+    final response = await _client.post(url, headers: headers, body: body).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to update location. Please check your internet connection.');
+      },
+    );
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
+    return _handleResponse(response);
+  }
+
   // Cab Booking endpoints (requires authentication)
   Future<dynamic> getCabBooking() async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.cabBooking}');

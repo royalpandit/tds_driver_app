@@ -33,6 +33,10 @@ class RideRequestModel {
   final String estimatedKm;
   final String estimatedMins;
   final String status;
+  final double? pickupLat;
+  final double? pickupLng;
+  final double? dropLat;
+  final double? dropLng;
 
   RideRequestModel({
     required this.id,
@@ -45,6 +49,10 @@ class RideRequestModel {
     required this.estimatedKm,
     required this.estimatedMins,
     required this.status,
+    this.pickupLat,
+    this.pickupLng,
+    this.dropLat,
+    this.dropLng,
   });
 
   factory RideRequestModel.fromJson(Map<String, dynamic> json) {
@@ -59,6 +67,10 @@ class RideRequestModel {
       estimatedKm: json['estimated_km'] ?? '',
       estimatedMins: json['estimated_mins'] ?? '',
       status: json['status'] ?? '',
+      pickupLat: json['pickup_lat'] != null ? double.tryParse(json['pickup_lat'].toString()) : null,
+      pickupLng: json['pickup_lng'] != null ? double.tryParse(json['pickup_lng'].toString()) : null,
+      dropLat: json['drop_lat'] != null ? double.tryParse(json['drop_lat'].toString()) : null,
+      dropLng: json['drop_lng'] != null ? double.tryParse(json['drop_lng'].toString()) : null,
     );
   }
 }

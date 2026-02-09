@@ -10,6 +10,7 @@ import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
 import '../../providers/driver_provider.dart';
 import 'home_screen.dart';
+import 'trip_tracking_screen.dart';
 
 class AllTripsScreen extends StatefulWidget {
   const AllTripsScreen({super.key});
@@ -395,180 +396,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             _buildTripActionButtons(trip),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTripCards(Trip trip) {
-    Color statusColor;
-    IconData statusIcon;
-
-    switch (trip.status.toLowerCase()) {
-      case 'completed':
-        statusColor = Colors.green;
-        statusIcon = Ionicons.checkmark_circle_outline;
-        break;
-      case 'cancelled':
-        statusColor = Colors.red;
-        statusIcon = Ionicons.close_circle_outline;
-        break;
-      case 'planned':
-        statusColor = Colors.orange;
-        statusIcon = Ionicons.time_outline;
-        break;
-      default:
-        statusColor = Colors.orange;
-        statusIcon = Ionicons.time_outline;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with ID and Status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Ionicons.car_outline, color: AppColors.lightPrimary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Trip #${trip.id}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(statusIcon, size: 16, color: statusColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      trip.status,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Driver and Employee Info
-          Row(
-            children: [
-              Icon(Ionicons.person_outline, color: Colors.grey, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '${trip.driver.name} • ${trip.employeesCount} passengers',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Trip Details
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                // Date and Time
-                Row(
-                  children: [
-                    Icon(Ionicons.calendar_outline, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      app_date_utils.AppDateUtils.formatDate(trip.tripDate),
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Vehicle Info
-                Row(
-                  children: [
-                    Icon(Ionicons.car_outline, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${trip.vehicle.model} - ${trip.vehicle.numberPlate}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Trip Type
-                Row(
-                  children: [
-                    Icon(Ionicons.navigate_outline, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      trip.tripType,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Action Buttons
-          _buildTripActionButtons(trip),
-        ],
       ),
     );
   }
@@ -1059,7 +886,12 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
   void _proceedToStartTrip(int tripId, String otp) async {
     try {
       // Start the trip with OTP verification
-      await Provider.of<DriverProvider>(context, listen: false).updateTripStatus(tripId, 'running', otp: otp);
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      await driverProvider.updateTripStatus(tripId, 'running', otp: otp);
+
+      // Get trip details for tracking
+      await driverProvider.getTripDetails(tripId);
+      final tripDetails = driverProvider.tripDetails;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1073,6 +905,18 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
+
+        // Navigate to trip tracking screen
+        if (tripDetails != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TripTrackingScreen(
+                tripId: tripId,
+                tripDetails: tripDetails,
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

@@ -10,6 +10,7 @@ import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
 import 'all_trips_screen.dart' as all_trips;
 import '../../providers/driver_provider.dart' as driver_provider;
+import 'trip_tracking_screen.dart';
 // import '../../../data/models/trip_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -883,7 +884,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _proceedToStartTrip(int tripId, String otp) async {
     try {
       // Start the trip with OTP verification
-      await Provider.of<driver_provider.DriverProvider>(context, listen: false).updateTripStatus(tripId, 'running', otp: otp);
+      final driverProvider = Provider.of<driver_provider.DriverProvider>(context, listen: false);
+      await driverProvider.updateTripStatus(tripId, 'running', otp: otp);
+
+      // Get trip details for tracking
+      await driverProvider.getTripDetails(tripId);
+      final tripDetails = driverProvider.tripDetails;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -897,6 +903,18 @@ class _HomeScreenState extends State<HomeScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
+
+        // Navigate to trip tracking screen
+        if (tripDetails != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TripTrackingScreen(
+                tripId: tripId,
+                tripDetails: tripDetails,
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -1177,67 +1195,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         );
       },
-    );
-  }
-
-  void _startTrip(int tripId) async {
-    try {
-      // FIRST API CALL (WITHOUT OTP) to trigger OTP sending
-      bool success = await Provider.of<driver_provider.DriverProvider>(
-        context,
-        listen: false,
-      ).updateTripStatus(tripId, 'running');
-
-      if (success) {
-        // ✅ API success → now open OTP popup
-        _showStartOtpDialog(tripId);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Trip start failed: $e',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-    }
-  }
-
-
-
-  void _callDriver(Trip trip) {
-    // Implement phone call functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Call feature not implemented yet',
-          style: GoogleFonts.poppins(color: Colors.white),
-        ),
-        backgroundColor: Colors.blue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  void _openMap(Trip trip) {
-    // Implement map functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Opening map for Trip #${trip.id}',
-          style: GoogleFonts.poppins(color: Colors.white),
-        ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
     );
   }
 

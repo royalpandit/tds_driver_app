@@ -49,6 +49,10 @@ dependencies:
   firebase_messaging: ^15.0.0
   firebase_auth: ^5.0.0
   flutter_local_notifications: ^17.0.0
+  google_maps_flutter: ^2.5.0
+  geolocator: ^10.1.0
+  flutter_polyline_points: ^2.0.0
+  permission_handler: ^11.1.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
