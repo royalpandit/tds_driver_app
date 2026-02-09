@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../providers/driver_provider.dart';
-import 'package:mappls_gl/mappls_gl.dart';
+import '../../../data/services/google_maps_service.dart';
 
 
 
@@ -19,20 +20,70 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
-  MapplsMapController? _mapController;
+  GoogleMapController? _mapController;
   LatLng? _pickupLatLng;
   LatLng? _dropLatLng;
+  final GoogleMapsService _mapsService = GoogleMapsService();
+  bool _isMapLoading = true;
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<DriverProvider>(
-        context,
-        listen: false,
-      ).getTripDetails(widget.tripId);
-
+      _loadTripDetails();
     });
+  }
+
+  Future<void> _loadTripDetails() async {
+    await Provider.of<DriverProvider>(
+      context,
+      listen: false,
+    ).getTripDetails(widget.tripId);
+    
+    // Load map coordinates after getting trip details
+    if (mounted) {
+      await _loadMapCoordinates();
+    }
+  }
+
+  Future<void> _loadMapCoordinates() async {
+    final provider = Provider.of<DriverProvider>(context, listen: false);
+    if (provider.tripDetails == null) return;
+
+    setState(() => _isMapLoading = true);
+
+    final rideRequest = provider.tripDetails!.rideRequest;
+
+    // Get pickup coordinates
+    if (rideRequest.pickupLat != null && rideRequest.pickupLng != null) {
+      _pickupLatLng = LatLng(rideRequest.pickupLat!, rideRequest.pickupLng!);
+    } else if (rideRequest.pickupAddress.isNotEmpty) {
+      _pickupLatLng = await _mapsService.getCoordinatesFromAddress(
+        rideRequest.pickupAddress,
+      );
+    }
+
+    // Get drop coordinates
+    if (rideRequest.dropLat != null && rideRequest.dropLng != null) {
+      _dropLatLng = LatLng(rideRequest.dropLat!, rideRequest.dropLng!);
+    } else if (rideRequest.dropAddress.isNotEmpty) {
+      _dropLatLng = await _mapsService.getCoordinatesFromAddress(
+        rideRequest.dropAddress,
+      );
+    }
+
+    // Fallback to default coordinates if geocoding fails
+    _pickupLatLng ??= const LatLng(23.0225, 72.5714); // Gandhinagar
+    _dropLatLng ??= const LatLng(22.9916, 72.4927); // Ahmedabad
+
+    // Draw markers and route after loading coordinates
+    if (mounted) {
+      await _prepareMapData();
+    }
+
+    setState(() => _isMapLoading = false);
   }
 
   @override
@@ -145,13 +196,65 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   // ================= MAP =================
 
+  Future<void> _prepareMapData() async {
+    if (_pickupLatLng == null || _dropLatLng == null) return;
+
+    // Add pickup marker
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('pickup'),
+        position: _pickupLatLng!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: const InfoWindow(
+          title: 'Pickup Location',
+          snippet: 'Trip starts here',
+        ),
+      ),
+    );
+
+    // Add drop marker
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('drop'),
+        position: _dropLatLng!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: const InfoWindow(
+          title: 'Drop Location',
+          snippet: 'Trip ends here',
+        ),
+      ),
+    );
+
+    // Get route between pickup and drop
+    final directions = await _mapsService.getDirections(
+      origin: _pickupLatLng!,
+      destination: _dropLatLng!,
+    );
+
+    if (directions != null && directions['polylinePoints'] != null) {
+      final polylinePoints = directions['polylinePoints'] as List<LatLng>;
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: polylinePoints,
+          color: AppColors.lightPrimary,
+          width: 5,
+        ),
+      );
+    }
+  }
+
   Widget _buildMapSection(TripDetailsResponseModel details) {
-
-    // TEMP: API me lat/lng nahi aaye to fallback (later API se real coords lena)
-    // Agar tumhare model me lat/lng ho to direct use karo
-
-    _pickupLatLng ??= const LatLng(23.0225, 72.5714); // Gandhinagar
-    _dropLatLng ??= const LatLng(22.9916, 72.4927);   // Ahmedabad
+    if (_isMapLoading || _pickupLatLng == null || _dropLatLng == null) {
+      return Container(
+        height: 260,
+        width: double.infinity,
+        decoration: _cardDecoration(),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return Container(
       height: 260,
@@ -159,86 +262,59 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       decoration: _cardDecoration(),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-       child:MapplsMap(
+        child: GoogleMap(
           initialCameraPosition: CameraPosition(
             target: _pickupLatLng!,
             zoom: 12,
           ),
           onMapCreated: (controller) {
+            if (!mounted) return;
             _mapController = controller;
-            _drawRoute();
+            _fitBoundsToMarkers();
           },
+          markers: _markers,
+          polylines: _polylines,
           myLocationEnabled: true,
-         ),
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+          mapType: MapType.normal,
+        ),
       ),
     );
+  }
+
+  void _fitBoundsToMarkers() {
+    if (!mounted || _mapController == null || _pickupLatLng == null || _dropLatLng == null) return;
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(
+        _pickupLatLng!.latitude < _dropLatLng!.latitude
+            ? _pickupLatLng!.latitude
+            : _dropLatLng!.latitude,
+        _pickupLatLng!.longitude < _dropLatLng!.longitude
+            ? _pickupLatLng!.longitude
+            : _dropLatLng!.longitude,
+      ),
+      northeast: LatLng(
+        _pickupLatLng!.latitude > _dropLatLng!.latitude
+            ? _pickupLatLng!.latitude
+            : _dropLatLng!.latitude,
+        _pickupLatLng!.longitude > _dropLatLng!.longitude
+            ? _pickupLatLng!.longitude
+            : _dropLatLng!.longitude,
+      ),
+    );
+
+    try {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 80),
+      );
+    } catch (e) {
+      print('Error fitting bounds: $e');
+    }
   }
 
   // ================= PASSENGER LIST =================
-  void _drawRoute() async {
-
-    if (_mapController == null ||
-        _pickupLatLng == null ||
-        _dropLatLng == null) return;
-
-    // 📍 Pickup marker
-    await _mapController!.addSymbol(
-      SymbolOptions(
-        geometry: _pickupLatLng!,
-        textField: "Pickup",
-        textOffset: const Offset(0, 1.5),
-      ),
-    );
-
-    // 📍 Drop marker
-    await _mapController!.addSymbol(
-      SymbolOptions(
-        geometry: _dropLatLng!,
-        textField: "Drop",
-        textOffset: const Offset(0, 1.5),
-      ),
-    );
-
-    // 🛣 Simple route line
-    await _mapController!.addLine(
-      LineOptions(
-        geometry: [
-          _pickupLatLng!,
-          _dropLatLng!,
-        ],
-        lineColor: "#1C5479",
-        lineWidth: 5,
-      ),
-    );
-
-    // 🎥 Camera fit
-    await _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(
-            _pickupLatLng!.latitude < _dropLatLng!.latitude
-                ? _pickupLatLng!.latitude
-                : _dropLatLng!.latitude,
-            _pickupLatLng!.longitude < _dropLatLng!.longitude
-                ? _pickupLatLng!.longitude
-                : _dropLatLng!.longitude,
-          ),
-          northeast: LatLng(
-            _pickupLatLng!.latitude > _dropLatLng!.latitude
-                ? _pickupLatLng!.latitude
-                : _dropLatLng!.latitude,
-            _pickupLatLng!.longitude > _dropLatLng!.longitude
-                ? _pickupLatLng!.longitude
-                : _dropLatLng!.longitude,
-          ),
-        ),
-        left: 40,
-        right: 40,
-        top: 40,
-        bottom: 40,
-      ),
-    );
-  }
 
   Widget _buildPassengerList(TripDetailsResponseModel details, String tripStatus) {
     return Container(

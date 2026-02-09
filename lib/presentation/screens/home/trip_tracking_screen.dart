@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:ionicons/ionicons.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/trip_details_response_model.dart';
 import '../../../data/services/google_maps_service.dart';
@@ -41,6 +42,8 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   String _durationText = 'Calculating...';
   String _totalDistanceText = '0 km';
   bool _isLoading = true;
+  List<LatLng> _traveledPath = []; // Track where driver has been
+  bool _hasReachedPickup = false; // Track if driver reached pickup
 
   // Location tracking
   Timer? _locationUpdateTimer;
@@ -109,7 +112,9 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showPermissionDeniedDialog();
+        if (mounted) {
+          _showPermissionDeniedDialog();
+        }
         return;
       }
 
@@ -117,16 +122,18 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
-      });
+      if (mounted) {
+        setState(() {
+          _currentLocation = LatLng(position.latitude, position.longitude);
+        });
+      }
     } catch (e) {
       // print('Error getting current location: $e');
     }
   }
 
   Future<void> _drawRouteAndMarkers() async {
-    if (_currentLocation == null || _pickupLocation == null || _dropLocation == null) {
+    if (!mounted || _currentLocation == null || _pickupLocation == null || _dropLocation == null) {
       return;
     }
 
@@ -134,99 +141,165 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
     _markers.clear();
     _polylines.clear();
 
-    // Add markers
+    // Add current location marker (driver)
     _markers.add(
       Marker(
         markerId: const MarkerId('current_location'),
         position: _currentLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        infoWindow: const InfoWindow(title: 'Your Location'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: const InfoWindow(title: 'Your Location', snippet: 'Current position'),
+        anchor: const Offset(0.5, 0.5),
       ),
     );
 
-    _markers.add(
-      Marker(
-        markerId: const MarkerId('pickup_location'),
-        position: _pickupLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        infoWindow: InfoWindow(
-          title: 'Pickup',
-          snippet: widget.tripDetails.rideRequest.pickupAddress,
-        ),
-      ),
-    );
-
-    _markers.add(
-      Marker(
-        markerId: const MarkerId('drop_location'),
-        position: _dropLocation!,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(
-          title: 'Drop-off',
-          snippet: widget.tripDetails.rideRequest.dropAddress,
-        ),
-      ),
-    );
-
-    // Get directions from current location to pickup, then to drop
-    final directionsToPickup = await _mapsService.getDirections(
-      origin: _currentLocation!,
-      destination: _pickupLocation!,
-    );
-
-    final directionsToDropoff = await _mapsService.getDirections(
-      origin: _pickupLocation!,
-      destination: _dropLocation!,
-    );
-
-    // Draw route to pickup
-    if (directionsToPickup != null) {
-      final polylinePoints = directionsToPickup['polylinePoints'] as List<LatLng>;
-      _polylines.add(
-        Polyline(
-          polylineId: const PolylineId('route_to_pickup'),
-          points: polylinePoints,
-          color: Colors.blue,
-          width: 5,
+    // Determine next destination based on trip progress
+    LatLng nextDestination;
+    String destinationLabel;
+    BitmapDescriptor destinationIcon;
+    
+    if (!_hasReachedPickup) {
+      // Driver hasn't reached pickup yet - show route to pickup
+      nextDestination = _pickupLocation!;
+      destinationLabel = 'Pickup';
+      destinationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+      
+      // Add pickup marker
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('pickup_location'),
+          position: _pickupLocation!,
+          icon: destinationIcon,
+          infoWindow: InfoWindow(
+            title: 'Pickup Point',
+            snippet: widget.tripDetails.rideRequest.pickupAddress,
+          ),
         ),
       );
-
-      setState(() {
-        _distanceText = directionsToPickup['distanceText'];
-        _durationText = directionsToPickup['durationText'];
-      });
+      
+      // Also show drop location (but grayed out)
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('drop_location'),
+          position: _dropLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+          alpha: 0.5,
+          infoWindow: InfoWindow(
+            title: 'Drop Point (Next)',
+            snippet: widget.tripDetails.rideRequest.dropAddress,
+          ),
+        ),
+      );
+    } else {
+      // Driver has reached pickup - show route to drop
+      nextDestination = _dropLocation!;
+      destinationLabel = 'Drop';
+      destinationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+      
+      // Add drop marker
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('drop_location'),
+          position: _dropLocation!,
+          icon: destinationIcon,
+          infoWindow: InfoWindow(
+            title: 'Drop Point',
+            snippet: widget.tripDetails.rideRequest.dropAddress,
+          ),
+        ),
+      );
+      
+      // Show pickup as completed (grayed out)
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('pickup_location'),
+          position: _pickupLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+          alpha: 0.4,
+          infoWindow: const InfoWindow(
+            title: 'Pickup (Completed)',
+          ),
+        ),
+      );
     }
 
-    // Draw route from pickup to dropoff (in different color)
-    if (directionsToDropoff != null) {
-      final polylinePoints = directionsToDropoff['polylinePoints'] as List<LatLng>;
+    // Draw traveled path (where driver has been)
+    if (_traveledPath.length > 1) {
       _polylines.add(
         Polyline(
-          polylineId: const PolylineId('route_to_dropoff'),
+          polylineId: const PolylineId('traveled_path'),
+          points: _traveledPath,
+          color: Colors.grey,
+          width: 4,
+          patterns: [PatternItem.dash(10), PatternItem.gap(5)],
+        ),
+      );
+    }
+
+    // Get directions from current location to next destination
+    final directions = await _mapsService.getDirections(
+      origin: _currentLocation!,
+      destination: nextDestination,
+    );
+
+    if (!mounted) return;
+
+    // Draw route to next destination
+    if (directions != null) {
+      final polylinePoints = directions['polylinePoints'] as List<LatLng>;
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_ahead'),
           points: polylinePoints,
-          color: Colors.green,
+          color: _hasReachedPickup ? Colors.red : Colors.blue,
           width: 5,
-          patterns: [PatternItem.dash(20), PatternItem.gap(10)],
         ),
       );
 
-      final totalDistance = (directionsToPickup?['distance'] ?? 0) +
-          directionsToDropoff['distance'];
-      setState(() {
-        _totalDistanceText = _mapsService.formatDistance(totalDistance);
-      });
+      if (mounted) {
+        setState(() {
+          _distanceText = directions['distanceText'];
+          _durationText = directions['durationText'];
+        });
+      }
+    }
+
+    // Calculate total distance if not reached pickup yet
+    if (!_hasReachedPickup) {
+      final directionsToDropoff = await _mapsService.getDirections(
+        origin: _pickupLocation!,
+        destination: _dropLocation!,
+      );
+
+      if (directionsToDropoff != null) {
+        final totalDistance = (directions?['distance'] ?? 0) +
+            directionsToDropoff['distance'];
+        if (mounted) {
+          setState(() {
+            _totalDistanceText = _mapsService.formatDistance(totalDistance);
+          });
+        }
+      }
+    } else {
+      // After pickup, total distance is just to drop
+      if (mounted && directions != null) {
+        setState(() {
+          _totalDistanceText = directions['distanceText'];
+        });
+      }
     }
 
     // Fit bounds to show all markers
-    if (_mapController != null) {
+    if (mounted && _mapController != null) {
       _fitBoundsToMarkers();
     }
 
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _fitBoundsToMarkers() {
-    if (_markers.isEmpty || _mapController == null) return;
+    if (!mounted || _markers.isEmpty || _mapController == null) return;
 
     double minLat = double.infinity;
     double maxLat = -double.infinity;
@@ -245,14 +318,23 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
       northeast: LatLng(maxLat, maxLng),
     );
 
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 100),
-    );
+    try {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, 100),
+      );
+    } catch (e) {
+      // Controller might be disposed
+      print('Error animating camera: $e');
+    }
   }
 
   void _startLocationTracking() {
     // Update location every 10 seconds
     _locationUpdateTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       _updateCurrentLocationOnServer();
     });
 
@@ -265,30 +347,50 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: locationSettings,
     ).listen((Position position) {
+      if (!mounted) return;
+      
       final newLocation = LatLng(position.latitude, position.longitude);
+
+      // Add to traveled path
+      _traveledPath.add(newLocation);
+
+      // Check if reached pickup (within 50 meters)
+      if (!_hasReachedPickup && _pickupLocation != null) {
+        final distanceToPickup = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          _pickupLocation!.latitude,
+          _pickupLocation!.longitude,
+        );
+        
+        if (distanceToPickup < 50) {
+          _hasReachedPickup = true;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Pickup location reached!',
+                  style: GoogleFonts.poppins(color: Colors.white),
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
 
       setState(() {
         _currentLocation = newLocation;
-
-        // Update current location marker
-        _markers.removeWhere((m) => m.markerId.value == 'current_location');
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('current_location'),
-            position: newLocation,
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-            infoWindow: const InfoWindow(title: 'Your Location'),
-          ),
-        );
       });
 
-      // Update route
+      // Update route with new location
       _drawRouteAndMarkers();
     });
   }
 
   Future<void> _updateCurrentLocationOnServer() async {
-    if (_currentLocation == null) return;
+    if (!mounted || _currentLocation == null) return;
 
     try {
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
@@ -337,171 +439,392 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.lightPrimary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Trip Tracking',
-          style: GoogleFonts.poppins(color: Colors.white),
-        ),
-      ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Trip Info Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.white,
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildInfoItem(
-                            Icons.directions_car,
-                            'Distance to Pickup',
-                            _distanceText,
-                          ),
-                          _buildInfoItem(
-                            Icons.access_time,
-                            'Time to Pickup',
-                            _durationText,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildInfoItem(
-                            Icons.route,
-                            'Total Trip Distance',
-                            _totalDistanceText,
-                          ),
-                          _buildInfoItem(
-                            Icons.person,
-                            'Trip ID',
-                            '#${widget.tripId}',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          ? Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1C5479), Color(0xFF2E8BC0), Color(0xFF4A90E2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                // Map
-                Expanded(
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: _currentLocation ?? const LatLng(23.0225, 72.5714),
-                      zoom: 14,
+              ),
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            )
+          : Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1C5479), Color(0xFF2E8BC0), Color(0xFF4A90E2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Custom Header
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Live Trip Tracking',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Trip #${widget.tripId}',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Status Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _hasReachedPickup 
+                                      ? Colors.orange.shade600
+                                      : Colors.green.shade600,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _hasReachedPickup ? Icons.local_shipping : Icons.location_on,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _hasReachedPickup ? 'To Drop' : 'To Pickup',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                      _fitBoundsToMarkers();
-                    },
-                    markers: _markers,
-                    polylines: _polylines,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    zoomControlsEnabled: true,
-                    mapType: MapType.normal,
                   ),
-                ),
-                // Action Buttons
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _recenterMap,
-                          icon: const Icon(Icons.my_location),
-                          label: Text(
-                            'Recenter',
-                            style: GoogleFonts.poppins(),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.lightPrimary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+
+                  // Main Content
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _refreshRoute,
-                          icon: const Icon(Icons.refresh),
-                          label: Text(
-                            'Refresh Route',
-                            style: GoogleFonts.poppins(),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          
+                          // Trip Stats Card
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                    children: [
+                                      _buildInfoItem(
+                                        Ionicons.navigate_circle,
+                                        'Distance',
+                                        _distanceText,
+                                        AppColors.lightPrimary,
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: Colors.grey.shade300,
+                                      ),
+                                      _buildInfoItem(
+                                        Ionicons.time,
+                                        'ETA',
+                                        _durationText,
+                                        Colors.orange.shade600,
+                                      ),
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: Colors.grey.shade300,
+                                      ),
+                                      _buildInfoItem(
+                                        Ionicons.speedometer,
+                                        'Total',
+                                        _totalDistanceText,
+                                        Colors.green.shade600,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.lightPrimary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Ionicons.people, size: 18, color: AppColors.lightPrimary),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${widget.tripDetails.trip.passengers.length} Passenger${widget.tripDetails.trip.passengers.length > 1 ? 's' : ''}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.lightPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+
+                          const SizedBox(height: 16),
+
+                          // Map Container
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.08),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: GoogleMap(
+                                    initialCameraPosition: CameraPosition(
+                                      target: _currentLocation ?? const LatLng(23.0225, 72.5714),
+                                      zoom: 14,
+                                    ),
+                                    onMapCreated: (controller) {
+                                      if (!mounted) return;
+                                      _mapController = controller;
+                                      _fitBoundsToMarkers();
+                                    },
+                                    markers: _markers,
+                                    polylines: _polylines,
+                                    myLocationEnabled: true,
+                                    myLocationButtonEnabled: false,
+                                    zoomControlsEnabled: false,
+                                    mapType: MapType.normal,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+
+                          const SizedBox(height: 16),
+
+                          // Action Buttons
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                if (!_hasReachedPickup) ...[
+                                  Expanded(
+                                    flex: 2,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _hasReachedPickup = true;
+                                        });
+                                        _drawRouteAndMarkers();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Pickup completed! Now heading to drop',
+                                              style: GoogleFonts.poppins(color: Colors.white),
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        elevation: 4,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Ionicons.checkmark_circle, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Reached Pickup',
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _recenterMap,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.lightPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 4,
+                                    ),
+                                    child: const Icon(Ionicons.locate, size: 20),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _refreshRoute,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange.shade600,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 4,
+                                    ),
+                                    child: const Icon(Ionicons.refresh, size: 20),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String label, String value) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: AppColors.lightPrimary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+  Widget _buildInfoItem(IconData icon, String label, String value, Color color) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+          child: Icon(icon, size: 24, color: color),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
   void _recenterMap() {
-    if (_currentLocation != null && _mapController != null) {
+    if (!mounted || _currentLocation == null || _mapController == null) return;
+    
+    try {
       _mapController!.animateCamera(
         CameraUpdate.newLatLngZoom(_currentLocation!, 15),
       );
+    } catch (e) {
+      print('Error recentering map: $e');
     }
   }
 
   void _refreshRoute() {
+    if (!mounted) return;
+    
     setState(() => _isLoading = true);
     _drawRouteAndMarkers().then((_) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

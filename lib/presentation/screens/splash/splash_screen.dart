@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
 import '../../../data/services/storage_service.dart';
@@ -19,11 +21,46 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToNext();
+    _requestPermissionsAndNavigate();
+  }
+
+  Future<void> _requestPermissionsAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    // Request all necessary permissions at app start
+    await _requestPermissions();
+    
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+
+    await _navigateToNext();
+  }
+
+  Future<void> _requestPermissions() async {
+    try {
+      // Request notification permission
+      await Permission.notification.request();
+
+      // Request location permission
+      LocationPermission locationPermission = await Geolocator.checkPermission();
+      if (locationPermission == LocationPermission.denied) {
+        locationPermission = await Geolocator.requestPermission();
+      }
+
+      // Request location always permission for background tracking
+      if (locationPermission == LocationPermission.whileInUse) {
+        await Permission.locationAlways.request();
+      }
+
+      // Request other permissions
+      await Permission.phone.request();
+    } catch (e) {
+      print('Error requesting permissions: $e');
+    }
   }
 
   Future<void> _navigateToNext() async {
-    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);

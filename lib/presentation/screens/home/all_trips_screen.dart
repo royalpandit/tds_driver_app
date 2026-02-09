@@ -1010,39 +1010,76 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     }
   }
   void _proceedToStartTrip(int tripId, String otp) async {
-
-    bool success = await Provider.of<DriverProvider>(
-      context,
-      listen: false,
-    ).updateTripStatus(
-      tripId,
-      'running',
-      otp: otp,
-    );
-
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid OTP code'),
-          backgroundColor: Colors.red,
-        ),
+    try {
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      
+      bool success = await driverProvider.updateTripStatus(
+        tripId,
+        'running',
+        otp: otp,
       );
-      return;
+
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Invalid OTP code',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Get trip details for tracking
+      await driverProvider.getTripDetails(tripId);
+      final tripDetails = driverProvider.tripDetails;
+      
+      // Refresh trips list
+      driverProvider.fetchTrips();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Trip started successfully',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Navigate to trip tracking screen
+        if (tripDetails != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TripTrackingScreen(
+                tripId: tripId,
+                tripDetails: tripDetails,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error starting trip: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
-    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
-
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context); // only closes dialog
-    }
-
-    // Navigator.of(context).pop();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Trip started successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
   }
 
   void _proceedToCompleteTrip(int tripId, String otp) async {
@@ -1298,19 +1335,63 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     );
   }
 
-  void _openMap(Trip trip) {
-    // Implement map functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Opening map for Trip #${trip.id}',
-          style: GoogleFonts.poppins(color: Colors.white),
-        ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  void _openMap(Trip trip) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
+
+    try {
+      // Get trip details for map navigation
+      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+      await driverProvider.getTripDetails(trip.id);
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      final tripDetails = driverProvider.tripDetails;
+      
+      if (tripDetails != null) {
+        // Navigate to trip tracking screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TripTrackingScreen(
+              tripId: trip.id,
+              tripDetails: tripDetails,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unable to load trip details',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error loading map: $e',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showFilterDialog() {
