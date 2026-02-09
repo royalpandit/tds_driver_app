@@ -66,7 +66,11 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Ionicons.alert_circle_outline, size: 64, color: Colors.red.withValues(alpha: 0.7)),
+                            Icon(
+                              Ionicons.alert_circle_outline,
+                              size: 64,
+                              color: Colors.red.withValues(alpha: 0.7),
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               'Error loading trips',
@@ -90,12 +94,19 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                               onPressed: () => driverProvider.fetchTrips(),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.lightPrimary,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 12,
+                                ),
                               ),
                               child: Text(
                                 'Retry',
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -106,7 +117,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                     final trips = driverProvider.trips;
                     final filteredTrips = _selectedFilter == 'All'
                         ? trips
-                        : trips.where((trip) => trip.status.toLowerCase() == _selectedFilter.toLowerCase()).toList();
+                        : trips
+                              .where(
+                                (trip) =>
+                                    trip.status.toLowerCase() ==
+                                    _selectedFilter.toLowerCase(),
+                              )
+                              .toList();
 
                     if (filteredTrips.isEmpty) {
                       return _buildEmptyState();
@@ -129,7 +146,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: SizedBox(height: 60, child: Center(child: FloatingBottomNav(currentIndex: 2))),
+        child: SizedBox(
+          height: 60,
+          child: Center(child: FloatingBottomNav(currentIndex: 2)),
+        ),
       ),
     );
   }
@@ -137,14 +157,22 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 10, 20, 25),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        MediaQuery.of(context).padding.top + 10,
+        20,
+        25,
+      ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                ),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               Row(
@@ -155,13 +183,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                       Image.asset(
                         'assets/New/Group 9757.png',
                         height: 30,
-                        errorBuilder: (_,__,___) => const SizedBox(),
+                        errorBuilder: (_, __, ___) => const SizedBox(),
                       ),
                       const SizedBox(width: 8),
                       Image.asset(
                         'assets/New/Group 9756.png',
                         height: 25,
-                        errorBuilder: (_,__,___) => const SizedBox(),
+                        errorBuilder: (_, __, ___) => const SizedBox(),
                       ),
                     ],
                   ),
@@ -200,7 +228,11 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Ionicons.document_text_outline, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
+          Icon(
+            Ionicons.document_text_outline,
+            size: 64,
+            color: Colors.grey.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 16),
           Text(
             'No trips found',
@@ -213,18 +245,15 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           const SizedBox(height: 8),
           Text(
             'Your completed trips will appear here',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
-  Widget _buildTripCard(Trip trip) {
 
+  Widget _buildTripCard(Trip trip) {
     Color statusColor;
     IconData statusIcon;
 
@@ -274,15 +303,17 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ===== Header =====
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    Icon(Ionicons.car_outline,
-                        color: AppColors.lightPrimary, size: 20),
+                    Icon(
+                      Ionicons.car_outline,
+                      color: AppColors.lightPrimary,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Trip #${trip.id}',
@@ -294,8 +325,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                   ],
                 ),
                 Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -345,11 +378,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
               ),
               child: Column(
                 children: [
-
                   Row(
                     children: [
-                      const Icon(Ionicons.calendar_outline,
-                          size: 16, color: Colors.grey),
+                      const Icon(
+                        Ionicons.calendar_outline,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         app_date_utils.AppDateUtils.formatDate(trip.tripDate),
@@ -362,8 +397,11 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
                   Row(
                     children: [
-                      const Icon(Ionicons.car_outline,
-                          size: 16, color: Colors.grey),
+                      const Icon(
+                        Ionicons.car_outline,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -378,13 +416,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
                   Row(
                     children: [
-                      const Icon(Ionicons.navigate_outline,
-                          size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        trip.tripType,
-                        style: GoogleFonts.poppins(),
+                      const Icon(
+                        Ionicons.navigate_outline,
+                        size: 16,
+                        color: Colors.grey,
                       ),
+                      const SizedBox(width: 8),
+                      Text(trip.tripType, style: GoogleFonts.poppins()),
                     ],
                   ),
                 ],
@@ -413,12 +451,17 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.withValues(alpha: 0.1),
               foregroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Row(
@@ -427,7 +470,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                 onPressed: () => _callDriver(trip),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
               ),
@@ -436,7 +481,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                 onPressed: () => _openMap(trip),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.green.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
               ),
@@ -445,46 +492,61 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                 onPressed: () => _startTrip(trip.id),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                 ),
                 child: Text(
                   'Start Now',
-                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
         ],
       );
-    } else if (status == 'running' || status == 'in_progress' || status == 'started') {
+    } else if (status == 'running' ||
+        status == 'in_progress' ||
+        status == 'started') {
       // Show Cancel on left and End on right for running trips
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          ElevatedButton(
-            onPressed: () => _cancelTrip(trip.id),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              foregroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ),
+          // ElevatedButton(
+          //   onPressed: () => _cancelTrip(trip.id),
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: Colors.red.withValues(alpha: 0.1),
+          //     foregroundColor: Colors.red,
+          //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //   ),
+          //   child: Text(
+          //     'Cancel',
+          //     style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+          //   ),
+          // ),
           ElevatedButton(
             onPressed: () => _completeTrip(trip.id),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
             child: Text(
               'End',
-              style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -498,7 +560,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             onPressed: () => _callDriver(trip),
             style: IconButton.styleFrom(
               backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
           ),
@@ -507,7 +571,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             onPressed: () => _openMap(trip),
             style: IconButton.styleFrom(
               backgroundColor: Colors.green.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
           ),
@@ -518,7 +584,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
   void _cancelTrip(int tripId) {
     final TextEditingController reasonController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -556,10 +622,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Back',
-                style: GoogleFonts.poppins(),
-              ),
+              child: Text('Back', style: GoogleFonts.poppins()),
             ),
             ElevatedButton(
               onPressed: () {
@@ -581,13 +644,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Text(
                 'Continue',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -622,7 +685,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
   void _showCancelOtpDialog(int tripId, String reason) {
     final TextEditingController otpController = TextEditingController();
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -663,10 +726,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(),
-              ),
+              child: Text('Cancel', style: GoogleFonts.poppins()),
             ),
             ElevatedButton(
               onPressed: () {
@@ -680,7 +740,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                       ),
                       backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   );
                   return;
@@ -690,13 +752,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Text(
                 'Verify & Cancel',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -707,8 +769,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
   void _proceedToCancelTrip(int tripId, String reason, String otp) async {
     try {
-      await Provider.of<DriverProvider>(context, listen: false)
-          .updateTripStatus(tripId, 'cancelled', otp: otp, cancelReason: reason);
+      await Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).updateTripStatus(tripId, 'cancelled', otp: otp, cancelReason: reason);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -719,7 +783,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -733,7 +799,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -833,20 +901,22 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                       ),
                       backgroundColor: Colors.red,
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Text(
                 'Verify & Start',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -854,6 +924,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       },
     );
   }
+
   void _startTrip(int tripId) async {
     try {
       //  FIRST API CALL (WITHOUT OTP)
@@ -883,7 +954,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
   //   _showOtpDialog(tripId);
   // }
 
-  void _proceedToStartTrip(int tripId, String otp) async {
+  void _proceedToStartTripq(int tripId, String otp) async {
     try {
       // Start the trip with OTP verification
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
@@ -902,7 +973,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
 
@@ -928,17 +1001,90 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
     }
   }
+  void _proceedToStartTrip(int tripId, String otp) async {
+
+    bool success = await Provider.of<DriverProvider>(
+      context,
+      listen: false,
+    ).updateTripStatus(
+      tripId,
+      'running',
+      otp: otp,
+    );
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid OTP code'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
+
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context); // only closes dialog
+    }
+
+    // Navigator.of(context).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Trip started successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 
   void _proceedToCompleteTrip(int tripId, String otp) async {
+
+    bool success = await Provider.of<DriverProvider>(
+      context,
+      listen: false,
+    ).updateTripStatus(
+      tripId,
+      'completed',
+      otp: otp,
+    );
+
+    if (!success) {
+      // ❌ Wrong OTP → popup open rahe
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid OTP code'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // ✅ Correct OTP → close popup
+    Navigator.of(context).pop();
+    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Trip completed successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _proceedToCompleteTripq(int tripId, String otp) async {
     try {
       // Complete the trip with OTP verification
-      await Provider.of<DriverProvider>(context, listen: false).updateTripStatus(tripId, 'completed', otp: otp);
+      await Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).updateTripStatus(tripId, 'completed', otp: otp);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -949,7 +1095,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -963,7 +1111,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -1051,32 +1201,51 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             ElevatedButton(
               onPressed: () {
                 final otp = otpController.text.trim();
-                if (otp.length == 6 && RegExp(r'^\d{6}$').hasMatch(otp)) {
-                  Navigator.of(context).pop();
-                  _proceedToCompleteTrip(tripId, otp);
-                } else {
+
+                if (otp.isEmpty || otp.length != 6) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        'Please enter a valid 6-digit OTP',
-                        style: GoogleFonts.poppins(color: Colors.white),
-                      ),
+                      content: Text('Please enter valid 6-digit OTP'),
                       backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   );
+                  return;
                 }
+
+                _proceedToCompleteTrip(
+                  tripId,
+                  otp,
+                ); //  popup yahin se band nahi hoga
               },
+
+              // onPressed: () {
+              //   final otp = otpController.text.trim();
+              //   if (otp.length == 6 && RegExp(r'^\d{6}$').hasMatch(otp)) {
+              //   //  Navigator.of(context).pop();
+              //     _proceedToCompleteTrip(tripId, otp);
+              //   } else {
+              //     ScaffoldMessenger.of(context).showSnackBar(
+              //       SnackBar(
+              //         content: Text(
+              //           'Please enter a valid 6-digit OTP',
+              //           style: GoogleFonts.poppins(color: Colors.white),
+              //         ),
+              //         backgroundColor: Colors.red,
+              //         behavior: SnackBarBehavior.floating,
+              //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              //       ),
+              //     );
+              //   }
+              // },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: Text(
                 'Verify & Complete',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1084,8 +1253,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       },
     );
   }
-
-
 
   void _completeTrip(int tripId) async {
     try {
@@ -1108,7 +1275,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -1158,21 +1327,29 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             children: [
               Text(
                 'Select Filter',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 20),
-              ...['All', 'Completed', 'Planned', 'Cancelled', 'Clear'].map((filter) => ListTile(
-                leading: Icon(_getFilterIcon(filter), color: _getFilterColor(filter)),
-                title: Text(filter, style: GoogleFonts.poppins()),
-                onTap: () {
-                  if (filter == 'Clear') {
-                    setState(() => _selectedFilter = 'All');
-                  } else {
-                    setState(() => _selectedFilter = filter);
-                  }
-                  Navigator.pop(context);
-                },
-              )),
+              ...['All', 'Completed', 'Planned', 'Cancelled', 'Clear'].map(
+                (filter) => ListTile(
+                  leading: Icon(
+                    _getFilterIcon(filter),
+                    color: _getFilterColor(filter),
+                  ),
+                  title: Text(filter, style: GoogleFonts.poppins()),
+                  onTap: () {
+                    if (filter == 'Clear') {
+                      setState(() => _selectedFilter = 'All');
+                    } else {
+                      setState(() => _selectedFilter = filter);
+                    }
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
             ],
           ),
         );
@@ -1214,5 +1391,3 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     }
   }
 }
-
-

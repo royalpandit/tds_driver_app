@@ -131,7 +131,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _middleNameCtrl.text = data.personalInfo.middleName ?? "";
     _lastNameCtrl.text = data.personalInfo.lastName ;
     _emailCtrl.text = data.personalInfo.email ;
-    _phoneCtrl.text = data.personalInfo.phone ;
+    _phoneCtrl.text = data.personalInfo.phone ?? "";
     _dobCtrl.text = data.personalInfo.dob ?? "";
     _areaLocCtrl.text = data.personalInfo.areaOfLocation ?? "";
     _emergencyCtrl.text = data.emergencyInfo?.econtact ?? "";

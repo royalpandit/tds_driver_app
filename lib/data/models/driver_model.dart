@@ -5,12 +5,12 @@ class Driver {
   final String? middleName;
   final String lastName;
   final String email;
-  final String phone;
-  final String phoneCode;
+  final String? phone;
+  final String? phoneCode;
   final int? gender;
   final String? dob;
   final String? bloodGroup;
-  final String driverType;
+  final String? driverType;
   final String? areaOfLocation;
   final String? empId;
   final String? contractNumber;
@@ -21,7 +21,7 @@ class Driver {
   final String? econtact;
   final String? badgeNumber;
   final String? badgeIssueDate;
-  final String status;
+  final String? status;
   final String? driverImageUrl;
 
   Driver({
@@ -31,12 +31,12 @@ class Driver {
     this.middleName,
     required this.lastName,
     required this.email,
-    required this.phone,
-    required this.phoneCode,
+    this.phone,
+    this.phoneCode,
     this.gender,
     this.dob,
     this.bloodGroup,
-    required this.driverType,
+    this.driverType,
     this.areaOfLocation,
     this.empId,
     this.contractNumber,
@@ -47,7 +47,7 @@ class Driver {
     this.econtact,
     this.badgeNumber,
     this.badgeIssueDate,
-    required this.status,
+    this.status,
     this.driverImageUrl,
   });
 
@@ -59,12 +59,14 @@ class Driver {
       middleName: json['middle_name'],
       lastName: json['last_name'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      phoneCode: json['phone_code'] ?? '',
-      gender: json['gender'] != null ? int.tryParse(json['gender'].toString()) : null,
+      phone: json['phone'],
+      phoneCode: json['phone_code'],
+      gender: json['gender'] != null
+          ? int.tryParse(json['gender'].toString())
+          : null,
       dob: json['dob'],
       bloodGroup: json['blood_group'],
-      driverType: json['driver_type'] ?? '',
+      driverType: json['driver_type'],
       areaOfLocation: json['area_of_location'],
       empId: json['emp_id'],
       contractNumber: json['contract_number'],
@@ -77,38 +79,9 @@ class Driver {
       econtact: json['econtact'],
       badgeNumber: json['badge_number'],
       badgeIssueDate: json['badge_issue_date'],
-      status: json['status'] ?? '',
+      status: json['status'],
       driverImageUrl: json['driver_image_url'],
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'first_name': firstName,
-      'middle_name': middleName,
-      'last_name': lastName,
-      'email': email,
-      'phone': phone,
-      'phone_code': phoneCode,
-      'gender': gender,
-      'dob': dob,
-      'blood_group': bloodGroup,
-      'driver_type': driverType,
-      'area_of_location': areaOfLocation,
-      'emp_id': empId,
-      'contract_number': contractNumber,
-      'start_date': startDate,
-      'end_date': endDate,
-      'driver_commision_type': driverCommissionType,
-      'driver_commision': driverCommission,
-      'econtact': econtact,
-      'badge_number': badgeNumber,
-      'badge_issue_date': badgeIssueDate,
-      'status': status,
-      'driver_image_url': driverImageUrl,
-    };
   }
 }
 
@@ -120,6 +93,7 @@ class DriverDetails {
   final AadhaarPanInfo? aadhaarPanInfo;
   final EmploymentInfo? employmentInfo;
   final EmergencyInfo? emergencyInfo;
+  final VehicleInfo? vehicleInfo; // ✅ NEW
   final Map<String, String?> documents;
   final String status;
 
@@ -131,6 +105,7 @@ class DriverDetails {
     this.aadhaarPanInfo,
     this.employmentInfo,
     this.emergencyInfo,
+    this.vehicleInfo,
     required this.documents,
     required this.status,
   });
@@ -156,8 +131,57 @@ class DriverDetails {
       emergencyInfo: json['emergency_info'] != null
           ? EmergencyInfo.fromJson(json['emergency_info'])
           : null,
+      vehicleInfo: json['vehicle_info'] != null
+          ? VehicleInfo.fromJson(json['vehicle_info'])
+          : null,
       documents: Map<String, String?>.from(json['documents'] ?? {}),
       status: json['status'] ?? '',
+    );
+  }
+}
+
+class VehicleInfo {
+  final int id;
+  final String? makeName;
+  final String? modelName;
+  final String? licensePlate;
+  final String? colorName;
+  final String? year;
+  final String? engineType;
+  final String? vin;
+  final int? mileage;
+  final String? vehicleType;
+  final String? vehicleImage;
+
+  VehicleInfo({
+    required this.id,
+    this.makeName,
+    this.modelName,
+    this.licensePlate,
+    this.colorName,
+    this.year,
+    this.engineType,
+    this.vin,
+    this.mileage,
+    this.vehicleType,
+    this.vehicleImage,
+  });
+
+  factory VehicleInfo.fromJson(Map<String, dynamic> json) {
+    return VehicleInfo(
+      id: json['id'] ?? 0,
+      makeName: json['make_name'],
+      modelName: json['model_name'],
+      licensePlate: json['license_plate'],
+      colorName: json['color_name'],
+      year: json['year'],
+      engineType: json['engine_type'],
+      vin: json['vin'],
+      mileage: json['mileage'] != null
+          ? int.tryParse(json['mileage'].toString())
+          : null,
+      vehicleType: json['vehicle_type'],
+      vehicleImage: json['vehicle_image'],
     );
   }
 }
@@ -302,6 +326,3 @@ class EmergencyInfo {
     );
   }
 }
-
-
-

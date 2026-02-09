@@ -145,16 +145,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Trips',
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AllTripsScreen())),
         ),
-        ProfileMenuItem(
-          icon: Ionicons.search_outline,
-          title: 'Vehicle Inspection',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleInspectionScreen())),
-        ),
-        ProfileMenuItem(
-          icon: Ionicons.calculator_outline,
-          title: 'Expense Management',
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseScreen())),
-        ),
+        // ProfileMenuItem(
+        //   icon: Ionicons.search_outline,
+        //   title: 'Vehicle Inspection',
+        //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleInspectionScreen())),
+        // ),
+        // ProfileMenuItem(
+        //   icon: Ionicons.calculator_outline,
+        //   title: 'Expense Management',
+        //   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseScreen())),
+        // ),
         ProfileMenuItem(
           icon: Ionicons.speedometer_outline,
           title: 'Fuel History',

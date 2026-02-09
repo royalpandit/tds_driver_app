@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
+import 'package:traveldesk_driver/data/models/fuel/fuel_type_model.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import '../../data/models/driver_model.dart';
 import '../../data/models/trip_model.dart';
@@ -12,6 +16,21 @@ class DriverProvider with ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+// ================= FUEL STATION STATES =================
+  List<FuelHistory> _fuelHistory = [];
+  List<FuelHistory> get fuelHistory => _fuelHistory;
+
+  Pagination? _fuelPagination;
+  Pagination? get fuelPagination => _fuelPagination;
+
+  List<FuelStation> _fuelStations = [];
+  List<FuelStation> get fuelStations => _fuelStations;
+
+  List<FuelType> _fuelTypes = [];
+  List<FuelType> get fuelTypes => _fuelTypes;
+
+  FuelPrice? _fuelPrice;
+  FuelPrice? get fuelPrice => _fuelPrice;
 
   DriverDetails? _driverDetails;
   DriverDetails? get driverDetails => _driverDetails;
@@ -34,8 +53,8 @@ class DriverProvider with ChangeNotifier {
   List<Expense> _expenses = [];
   List<Expense> get expenses => _expenses;
 
-  List<Map<String, dynamic>> _fuelHistory = [];
-  List<Map<String, dynamic>> get fuelHistory => _fuelHistory;
+  // List<Map<String, dynamic>> _fuelHistory = [];
+  // List<Map<String, dynamic>> get fuelHistory => _fuelHistory;
 
   Map<String, dynamic> _dashboardStats = {
     'trip_stats': {
@@ -354,7 +373,8 @@ class DriverProvider with ChangeNotifier {
       return false;
     }
   }
-  Future<bool> acceptRideWithOtp(int offerId, String otp) async {
+  Future<bool> acceptRideWithOtp(int offerId, String otp) async
+  {
     _isLoading = true;
     notifyListeners();
 
@@ -389,7 +409,7 @@ class DriverProvider with ChangeNotifier {
       } else if (errorMsg.contains('No route to host') || errorMsg.contains('SocketException')) {
         _errorMessage = 'Network error. Please check your internet connection.';
       } else {
-        _errorMessage = errorMsg.length > 100 ? 'Failed to accept ride. Please try again.' : errorMsg;
+        _errorMessage = errorMsg;
       }
       notifyListeners();
       return false;
@@ -397,7 +417,8 @@ class DriverProvider with ChangeNotifier {
   }
 
   // Fetch trips
-  Future<bool> fetchTrips({int? page, int? perPage}) async {
+  Future<bool> fetchTrips({int? page, int? perPage}) async
+  {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -460,7 +481,7 @@ class DriverProvider with ChangeNotifier {
   //   }
   // }
 
-  Future<bool> updateTripStatus(int tripId, String status, {String? otp, String? cancelReason}) async {
+  Future<bool> updateTripStatusq(int tripId, String status, {String? otp, String? cancelReason}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -474,6 +495,41 @@ class DriverProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+  Future<bool> updateTripStatus(
+      int tripId,
+      String status, {
+        String? otp,
+        String? cancelReason,
+      }) async
+  {
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final success = await _apiService.updateTripStatus(
+        tripId,
+        status,
+        otp: otp,
+        cancelReason: cancelReason,
+      );
+
+      if (success) {
+        await fetchTrips();
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return success;
+
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
@@ -549,21 +605,29 @@ class DriverProvider with ChangeNotifier {
     String? toDate,
     int? perPage,
   }) async {
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _fuelHistory = await _apiService.getFuelHistory(
+
+      final response = await _apiService.getFuelHistory(
         vehicleId: vehicleId,
         fromDate: fromDate,
         toDate: toDate,
         perPage: perPage,
       );
+
+      _fuelHistory = response.data;
+      _fuelPagination = response.pagination;
+
       _isLoading = false;
       notifyListeners();
       return true;
+
     } catch (e) {
+
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
@@ -571,7 +635,9 @@ class DriverProvider with ChangeNotifier {
     }
   }
 
+
   // Add fuel entry
+
   Future<bool> addFuelEntry({
     required int vehicleId,
     required double startMeter,
@@ -585,7 +651,121 @@ class DriverProvider with ChangeNotifier {
     String? note,
     bool? complete,
     dynamic image,
-  }) async {
+  }) async
+  {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _apiService.addFuelEntry(
+        vehicleId: vehicleId,
+        startMeter: startMeter,
+        qty: qty,
+        costPerUnit: costPerUnit,
+        date: date,
+        fuelFrom: fuelFrom,
+        fuelStationId: fuelStationId,
+        fuelTypeId: fuelTypeId,
+        reference: reference,
+        note: note,
+        complete: complete,
+        image: image,
+      );
+
+      // Refresh fuel history
+      await fetchFuelHistory();
+
+      // Refresh dashboard stats
+      await fetchDashboardStats();
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+// ================= LOAD FUEL STATIONS =================
+
+  Future<void> fetchFuelStations() async {
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _fuelStations = await _apiService.getFuelStations();
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+
+// ----------------------------------------------------
+
+  Future<void> fetchFuelTypes(int stationId) async {
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _fuelTypes = await _apiService.getFuelTypes(stationId);
+      _fuelPrice = null; // reset old price
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+
+// ----------------------------------------------------
+
+  Future<void> fetchFuelPrice(int stationId, int fuelTypeId) async {
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _fuelPrice = await _apiService.getFuelPrice(
+        stationId: stationId,
+        fuelTypeId: fuelTypeId,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<bool> addFuelEntryq({
+    required int vehicleId,
+    required double startMeter,
+    required double qty,
+    required double costPerUnit,
+    required String date,
+    String? fuelFrom,
+    int? fuelStationId,
+    int? fuelTypeId,
+    String? reference,
+    String? note,
+    bool? complete,
+    dynamic image,
+  }) async
+  {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();

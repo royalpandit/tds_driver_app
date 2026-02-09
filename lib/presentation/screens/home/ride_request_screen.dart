@@ -111,54 +111,66 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
                 if (driverProvider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
-                if (driverProvider.errorMessage != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Ionicons.alert_circle_outline, size: 64, color: Colors.red.withValues(alpha: 0.7)),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading ride requests',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          driverProvider.errorMessage!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            // Reset loaded flags to allow retry
-                            _hasLoadedPending = false;
-                            _hasLoadedAccepted = false;
-                            _hasLoadedRejected = false;
-                            _loadCurrentTab();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.lightPrimary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                          ),
-                          child: Text(
-                            'Retry',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                if (driverProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
                 }
+
+// ❗ FULL SCREEN ERROR SIRF TAB JAB LIST EMPTY HO
+                if (driverProvider.errorMessage != null &&
+                    driverProvider.pendingRideRequests.isEmpty &&
+                    driverProvider.acceptedRideRequests.isEmpty &&
+                    driverProvider.rejectedRideRequests.isEmpty) {
+
+                  return _buildFullError(driverProvider.errorMessage!);
+                }
+
+                // if (driverProvider.errorMessage != null) {
+                //   return Center(
+                //     child: Column(
+                //       mainAxisAlignment: MainAxisAlignment.center,
+                //       children: [
+                //         Icon(Ionicons.alert_circle_outline, size: 64, color: Colors.red.withValues(alpha: 0.7)),
+                //         const SizedBox(height: 16),
+                //         Text(
+                //           'Error loading ride requests',
+                //           style: GoogleFonts.poppins(
+                //             fontSize: 18,
+                //             color: Colors.red,
+                //             fontWeight: FontWeight.w600,
+                //           ),
+                //         ),
+                //         const SizedBox(height: 10),
+                //         Text(
+                //           driverProvider.errorMessage!,
+                //           style: GoogleFonts.poppins(
+                //             fontSize: 14,
+                //             color: Colors.grey[600],
+                //           ),
+                //           textAlign: TextAlign.center,
+                //         ),
+                //         const SizedBox(height: 20),
+                //         ElevatedButton(
+                //           onPressed: () {
+                //             // Reset loaded flags to allow retry
+                //             _hasLoadedPending = false;
+                //             _hasLoadedAccepted = false;
+                //             _hasLoadedRejected = false;
+                //             _loadCurrentTab();
+                //           },
+                //           style: ElevatedButton.styleFrom(
+                //             backgroundColor: AppColors.lightPrimary,
+                //             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                //             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                //           ),
+                //           child: Text(
+                //             'Retry',
+                //             style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //   );
+                // }
 
                 return TabBarView(
                   controller: _tabController,
@@ -967,6 +979,45 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
       );
     }
   }
+
+  Widget _buildFullError(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Ionicons.alert_circle_outline,
+            size: 64,
+            color: Colors.red.withValues(alpha: 0.7),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Error loading ride requests',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              color: Colors.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _loadCurrentTab,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
 
 
