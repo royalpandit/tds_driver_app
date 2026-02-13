@@ -375,7 +375,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final showActions =
         tripStatus.toLowerCase() == 'running';
 
-    // 👇 FINAL LOGIC
+    //  FINAL LOGIC
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
