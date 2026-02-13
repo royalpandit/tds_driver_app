@@ -10,6 +10,8 @@ import '../../data/services/api_service.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:flutter/foundation.dart';
 
 class DriverProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -521,9 +523,13 @@ class DriverProvider with ChangeNotifier {
 
       if (result['type'] == 'redirect') {
         final url = result['url'] as String;
-        // Try opening external URL
+        // Try opening external URL (use external application on mobile)
         try {
-          await launchUrlString(url, webOnlyWindowName: '_blank');
+          if (kIsWeb) {
+            await launchUrlString(url, webOnlyWindowName: '_blank');
+          } else {
+            await launchUrlString(url, mode: LaunchMode.externalApplication);
+          }
         } catch (_) {}
         return url;
       }
@@ -537,7 +543,11 @@ class DriverProvider with ChangeNotifier {
 
         // Try open the saved file (best-effort)
         try {
-          await launchUrlString(Uri.file(filePath).toString());
+          if (!kIsWeb) {
+            await OpenFilex.open(filePath);
+          } else {
+            await launchUrlString(Uri.file(filePath).toString());
+          }
         } catch (_) {}
 
         return filePath;
