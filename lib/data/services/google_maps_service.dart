@@ -4,7 +4,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class GoogleMapsService {
-  static const String _apiKey = 'AIzaSyCSJmPsY5Am1uES-wfoW2Yk5qziMoJohMM';
+  static const String _apiKey = 'AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4';
   static const String _directionsBaseUrl = 'https://maps.googleapis.com/maps/api/directions/json';
   static const String _geocodeBaseUrl = 'https://maps.googleapis.com/maps/api/geocode/json';
   static const String _distanceMatrixBaseUrl = 'https://maps.googleapis.com/maps/api/distancematrix/json';

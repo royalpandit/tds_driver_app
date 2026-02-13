@@ -25,6 +25,10 @@ class ApiConstants {
   static const String tripDetails = '/api/trip-details/';
   static const String tripUpdateStatus = '/api/trip-update-status';
   static const String tripVerifyOtp = '/api/trip-verify-otp';
+  
+  // Invoice & Booking history
+  static const String invoiceDownload = '/api/invoice/download/';
+  static const String bookingHistory = '/api/ride/booking-history';
 
   // Legacy endpoints (keeping for reference)
   static const String cabBooking = '/api/cab-booking';

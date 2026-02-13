@@ -5,6 +5,7 @@ class StorageService {
   static const String _isLoggedInKey = 'is_logged_in';
   static const String _userContactKey = 'user_contact';
   static const String _userTypeKey = 'user_type';
+  static const String _fcmTokenKey = 'fcm_token';
   static const String _hasSeenOnboardingKey = 'has_seen_onboarding';
 
   Future<void> saveToken(String token) async {
@@ -54,6 +55,7 @@ class StorageService {
     await prefs.remove(_isLoggedInKey);
     await prefs.remove(_userContactKey);
     await prefs.remove(_userTypeKey);
+    await prefs.remove(_fcmTokenKey);
     // Keep onboarding flag so user doesn't see it again
   }
   

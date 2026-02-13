@@ -128,7 +128,17 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
         });
       }
     } catch (e) {
-      // print('Error getting current location: $e');
+      // If location fails, use pickup location as fallback
+      if (mounted && _pickupLocation != null) {
+        setState(() {
+          _currentLocation = _pickupLocation;
+        });
+      } else {
+        // Default to Gandhinagar if no pickup
+        setState(() {
+          _currentLocation = const LatLng(23.0225, 72.5714);
+        });
+      }
     }
   }
 

@@ -36,7 +36,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
         <meta-data android:name="com.mappls.sdk.apikey" android:value="9cf52ae378796dc6bd2e8a2b912cf31f" />
-        <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyCSJmPsY5Am1uES-wfoW2Yk5qziMoJohMM" />
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/notification_icon" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="high_importance_channel" />
     </application>

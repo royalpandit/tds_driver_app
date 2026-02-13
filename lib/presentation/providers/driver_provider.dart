@@ -7,6 +7,9 @@ import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import '../../data/models/driver_model.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/services/api_service.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class DriverProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -500,6 +503,52 @@ class DriverProvider with ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Download invoice for a trip. Returns local file path if saved,
+  /// or external url (string) if server redirected.
+  Future<String?> downloadInvoice(int tripId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _apiService.downloadInvoice(tripId);
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result['type'] == 'redirect') {
+        final url = result['url'] as String;
+        // Try opening external URL
+        try {
+          await launchUrlString(url, webOnlyWindowName: '_blank');
+        } catch (_) {}
+        return url;
+      }
+
+      if (result['type'] == 'file') {
+        final bytes = result['bytes'] as List<int>;
+        final tempDir = await getTemporaryDirectory();
+        final filePath = '${tempDir.path}/invoice_${tripId}.pdf';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes, flush: true);
+
+        // Try open the saved file (best-effort)
+        try {
+          await launchUrlString(Uri.file(filePath).toString());
+        } catch (_) {}
+
+        return filePath;
+      }
+
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      rethrow;
     }
   }
   Future<bool> updateTripStatus(

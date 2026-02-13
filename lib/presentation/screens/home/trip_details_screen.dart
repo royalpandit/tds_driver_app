@@ -171,6 +171,31 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
           _infoRow("Vehicle", details.trip.vehicle.model),
           _infoRow("Driver", details.trip.driver.name),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final provider = Provider.of<DriverProvider>(context, listen: false);
+                    try {
+                      final result = await provider.downloadInvoice(details.trip.id);
+                      if (result == null) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to download invoice')));
+                      } else {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invoice opened: $result')));
+                      }
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+                    }
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download Invoice'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.lightPrimary),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

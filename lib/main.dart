@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'firebase_options.dart';
 import 'core/services/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/theme_provider.dart';
@@ -30,6 +31,14 @@ void main() async {
     } catch (e) {
       // If Firebase initialization fails, log and continue so app can still run.
       print('Firebase.initializeApp() failed in main: $e');
+    }
+
+    // Ensure any existing Firebase user is signed out, then initialize services
+    try {
+      await FirebaseAuth.instance.signOut();
+      print('✅ Signed out existing Firebase user at startup');
+    } catch (e) {
+      print('⚠️ Error signing out existing Firebase user: $e');
     }
 
     // Initialize Firebase-related services (assumes Firebase has been initialized above)

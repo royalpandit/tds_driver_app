@@ -26,29 +26,29 @@ class DefaultFirebaseOptions {
 
   // ----- Replace these placeholder values by running `flutterfire configure` -----
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4',
-    appId: '1:456204258662:web:REPLACE_ME',
-    messagingSenderId: '456204258662',
-    projectId: 'tdsdriver',
-    authDomain: 'tdsdriver.firebaseapp.com',
-    storageBucket: 'tdsdriver.firebasestorage.app',
+    apiKey: 'AIzaSyAC3CxXeD5y6KqHnHgyznyPlIy4wjvFaPY',
+    appId: '1:552039310635:web:REPLACE_ME',
+    messagingSenderId: '552039310635',
+    projectId: 'tds-soln',
+    authDomain: 'tds-soln.firebaseapp.com',
+    storageBucket: 'tds-soln.firebasestorage.app',
     measurementId: null,
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4',
-    appId: '1:456204258662:android:6cb80575b56c970523cca7',
-    messagingSenderId: '456204258662',
-    projectId: 'tdsdriver',
-    storageBucket: 'tdsdriver.firebasestorage.app',
+    apiKey: 'AIzaSyAC3CxXeD5y6KqHnHgyznyPlIy4wjvFaPY',
+    appId: '1:552039310635:android:a1387094bdc6a9dcfa116e',
+    messagingSenderId: '552039310635',
+    projectId: 'tds-soln',
+    storageBucket: 'tds-soln.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyA1T13rHt5sZBgVdFCyqbw4AHGeGMLFsnk',
-    appId: '1:456204258662:ios:8925df0805e15ec923cca7',
-    messagingSenderId: '456204258662',
-    projectId: 'tdsdriver',
-    storageBucket: 'tdsdriver.firebasestorage.app',
+    apiKey: 'AIzaSyAC3CxXeD5y6KqHnHgyznyPlIy4wjvFaPY',
+    appId: '1:552039310635:ios:REPLACE_ME',
+    messagingSenderId: '552039310635',
+    projectId: 'tds-soln',
+    storageBucket: 'tds-soln.firebasestorage.app',
     iosBundleId: 'com.traveldesk.driver',
   );
 

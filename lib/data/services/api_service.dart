@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
@@ -1051,6 +1052,55 @@ class ApiService {
     );
   }
 
+  /// Download invoice PDF by Trip ID.
+  /// Returns a map with keys:
+  /// - 'type': 'file' | 'redirect'
+  /// - if 'file' => 'bytes' (Uint8List) and 'contentType'
+  /// - if 'redirect' => 'url'
+  Future<Map<String, dynamic>> downloadInvoice(int tripId) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.invoiceDownload}$tripId');
+    print('🌐 TDS API: GET $url (DOWNLOAD INVOICE)');
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to download invoice');
+      },
+    );
+
+    // 302 -> redirect to external invoice URL
+    if (response.statusCode == 302 || (response.statusCode >= 300 && response.statusCode < 400)) {
+      final location = response.headers['location'];
+      if (location != null && location.isNotEmpty) {
+        return {'type': 'redirect', 'url': location};
+      }
+      throw Exception('Redirected but no Location header found');
+    }
+
+    // 200 -> file bytes
+    if (response.statusCode == 200) {
+      final contentType = response.headers['content-type'] ?? 'application/pdf';
+      return {
+        'type': 'file',
+        'bytes': response.bodyBytes,
+        'contentType': contentType,
+      };
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception('Invoice not found');
+    }
+
+    // Fallback: try to parse error body
+    try {
+      final body = jsonDecode(response.body);
+      throw Exception(body['message'] ?? 'Failed to download invoice');
+    } catch (_) {
+      throw Exception('Failed to download invoice: HTTP ${response.statusCode}');
+    }
+  }
+
   // Future<TripDetails> getTripDetails(int tripId) async {
   //   final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripDetails}$tripId');
   //   // print('🌐 TDS API: GET $url');
@@ -1091,6 +1141,28 @@ class ApiService {
     print('📊 Response Status: ${response.statusCode}');
     print('📄 Response Body: ${response.body}');
     return _handleResponse(response);
+  }
+  
+  /// Fetch booking history for logged-in customer (paginated)
+  Future<Map<String, dynamic>> getBookingHistory({int perPage = 10, int page = 1}) async {
+    final queryParams = <String, String>{
+      'per_page': perPage.toString(),
+      'page': page.toString(),
+    };
+
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.bookingHistory}').replace(queryParameters: queryParams);
+    print('🌐 TDS API: GET $url (BOOKING HISTORY)');
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers).timeout(
+      const Duration(seconds: 20),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to fetch booking history');
+      },
+    );
+
+    final data = _handleResponse(response);
+    return data;
   }
   Future<bool> updateTripStatus(
       int tripId,
