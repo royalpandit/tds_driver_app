@@ -110,6 +110,7 @@ class CorporateModel {
   }
 }
 class TripModel {
+  final String status;
   final int id;
   final String tripDate;
   final String? tripStart;
@@ -120,6 +121,7 @@ class TripModel {
   final List<TripLogModel> logs;
 
   TripModel({
+    required this.status,
     required this.id,
     required this.tripDate,
     this.tripStart,
@@ -132,6 +134,8 @@ class TripModel {
 
   factory TripModel.fromJson(Map<String, dynamic> json) {
     return TripModel(
+      status: json['status'] ?? '',
+
       id: json['id'] ?? 0,
       tripDate: json['trip_date'] ?? '',
       tripStart: json['trip_start'],

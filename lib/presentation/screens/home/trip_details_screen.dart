@@ -8,8 +8,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../providers/driver_provider.dart';
 import '../../../data/services/google_maps_service.dart';
 
-
-
 class TripDetailsScreen extends StatefulWidget {
   final int tripId;
 
@@ -41,7 +39,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       context,
       listen: false,
     ).getTripDetails(widget.tripId);
-    
+
     // Load map coordinates after getting trip details
     if (mounted) {
       await _loadMapCoordinates();
@@ -77,13 +75,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     // Fallback to default coordinates if geocoding fails
     _pickupLatLng ??= const LatLng(23.0225, 72.5714); // Gandhinagar
     _dropLatLng ??= const LatLng(22.9916, 72.4927); // Ahmedabad
-
+    print("Pickup LAT LNG => $_pickupLatLng");
+    print("Drop LAT LNG => $_dropLatLng");
     // Draw markers and route after loading coordinates
     if (mounted) {
       await _prepareMapData();
+     // _prepareMapData();
     }
-
-    setState(() => _isMapLoading = false);
+    if (mounted) {
+      setState(() => _isMapLoading = false);
+    }
+    //setState(() => _isMapLoading = false);
   }
 
   @override
@@ -108,39 +110,103 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (provider.errorMessage != null) {
-            return Center(child: Text(provider.errorMessage!));
-          }
-
           if (provider.tripDetails == null) {
             return const Center(child: Text("No trip details available"));
           }
 
-          final TripDetailsResponseModel details = provider.tripDetails!;
+          final details = provider.tripDetails!;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
 
+                child!, // ⭐ MAP अब rebuild नहीं होगा
 
-                _buildMapSection(details),
                 const SizedBox(height: 16),
 
-
-                _buildPassengerList(details, details.rideRequest.status),
+                _buildPassengerList(details, details.trip.status),
                 const SizedBox(height: 16),
                 _buildTripInfo(details),
-
               ],
             ),
           );
         },
+
+        // ⭐ THIS IS THE FIX
+        child: _buildMapSectionStatic(),
       ),
+
+      // body: Consumer<DriverProvider>(
+      //   builder: (context, provider, child) {
+      //     if (provider.isLoading) {
+      //       return const Center(child: CircularProgressIndicator());
+      //     }
+      //     if (provider.errorMessage != null) {
+      //       return Center(child: Text(provider.errorMessage!));
+      //     }
+      //     if (provider.tripDetails == null) {
+      //       return const Center(child: Text("No trip details available"));
+      //     }
+      //     final TripDetailsResponseModel details = provider.tripDetails!;
+      //     return SingleChildScrollView(
+      //       padding: const EdgeInsets.all(16),
+      //       child: Column(
+      //         children: [
+      //           _buildMapSection(details),
+      //           const SizedBox(height: 16),
+      //
+      //           _buildPassengerList(details, details.trip.status),
+      //           const SizedBox(height: 16),
+      //           _buildTripInfo(details),
+      //         ],
+      //       ),
+      //     );
+      //   },
+      // ),
     );
   }
 
   // ================= TRIP INFO =================
+  Widget _buildMapSectionStatic() {
+    if (_isMapLoading || _pickupLatLng == null || _dropLatLng == null) {
+      return Container(
+        height: 260,
+        decoration: _cardDecoration(),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Container(
+      height: 260,
+      decoration: _cardDecoration(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: GoogleMap(
+          key: const ValueKey("AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4"),
+          initialCameraPosition: CameraPosition(
+            target: _pickupLatLng!,
+            zoom: 12,
+          ),
+          onMapCreated: (controller) {
+            _mapController = controller;
+            Future.delayed(const Duration(milliseconds: 300), () {
+              _fitBoundsToMarkers();
+            });
+          },
+          markers: _markers,
+          polylines: _polylines,
+
+          //  IMPORTANT
+          myLocationEnabled: false,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+        ),
+      ),
+    );
+  }
 
   Widget _buildTripInfo(TripDetailsResponseModel details) {
     final ride = details.rideRequest;
@@ -152,7 +218,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           _infoRow("Request Type", ride.requestType),
           _infoRow("Trip Category", ride.tripCategory),
 
@@ -177,21 +242,39 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final provider = Provider.of<DriverProvider>(context, listen: false);
+                    final provider = Provider.of<DriverProvider>(
+                      context,
+                      listen: false,
+                    );
                     try {
-                      final result = await provider.downloadInvoice(details.trip.id);
+                      final result = await provider.downloadInvoice(
+                        details.trip.id,
+                      );
                       if (result == null) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to download invoice')));
+                        if (mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Unable to download invoice'),
+                            ),
+                          );
                       } else {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invoice opened: $result')));
+                        if (mounted)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Invoice opened: $result')),
+                          );
                       }
                     } catch (e) {
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+                      if (mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: ${e.toString()}')),
+                        );
                     }
                   },
                   icon: const Icon(Icons.download),
                   label: const Text('Download Invoice'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.lightPrimary),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.lightPrimary,
+                  ),
                 ),
               ),
             ],
@@ -222,6 +305,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   // ================= MAP =================
 
   Future<void> _prepareMapData() async {
+    _markers.clear(); //  ADD
+    _polylines.clear();
     if (_pickupLatLng == null || _dropLatLng == null) return;
 
     // Add pickup marker
@@ -250,6 +335,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ),
     );
 
+    if (mounted) {
+      setState(() {}); //  MUST
+    }
     // Get route between pickup and drop
     final directions = await _mapsService.getDirections(
       origin: _pickupLatLng!,
@@ -266,7 +354,20 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           width: 5,
         ),
       );
+
+      if (mounted) {
+        setState(() {}); //  THIS LINE ADD
+      }
+      // _polylines.add(
+      //   Polyline(
+      //     polylineId: const PolylineId('route'),
+      //     points: polylinePoints,
+      //     color: AppColors.lightPrimary,
+      //     width: 5,
+      //   ),
+      // );
     }
+    print("Markers count => ${_markers.length}");
   }
 
   Widget _buildMapSection(TripDetailsResponseModel details) {
@@ -275,9 +376,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         height: 260,
         width: double.infinity,
         decoration: _cardDecoration(),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -295,21 +394,34 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           onMapCreated: (controller) {
             if (!mounted) return;
             _mapController = controller;
-            _fitBoundsToMarkers();
+            //  _fitBoundsToMarkers();
+            Future.delayed(const Duration(milliseconds: 300), () {
+              _fitBoundsToMarkers();
+            });
           },
-          markers: _markers,
+         // markers: _markers,
+          markers: {
+            Marker(
+              markerId: MarkerId("test"),
+              position: LatLng(23.0225, 72.5714),
+            )
+          },
           polylines: _polylines,
           myLocationEnabled: true,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
-          mapType: MapType.normal,
+          mapType: MapType.hybrid,
         ),
       ),
     );
   }
 
   void _fitBoundsToMarkers() {
-    if (!mounted || _mapController == null || _pickupLatLng == null || _dropLatLng == null) return;
+    if (!mounted ||
+        _mapController == null ||
+        _pickupLatLng == null ||
+        _dropLatLng == null)
+      return;
 
     final bounds = LatLngBounds(
       southwest: LatLng(
@@ -331,9 +443,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
 
     try {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(bounds, 80),
-      );
+      _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
     } catch (e) {
       print('Error fitting bounds: $e');
     }
@@ -341,7 +451,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   // ================= PASSENGER LIST =================
 
-  Widget _buildPassengerList(TripDetailsResponseModel details, String tripStatus) {
+  Widget _buildPassengerList(
+    TripDetailsResponseModel details,
+    String tripStatus,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -349,7 +462,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -370,10 +482,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       ),
     );
   }
-  Widget _passengerRow(PassengerModel passenger, String tripStatus) {
 
-    final showActions =
-        tripStatus.toLowerCase() == 'running';
+  Widget _passengerRow(PassengerModel passenger, String tripStatus) {
+    final showActions = tripStatus.toLowerCase() == 'running';
 
     //  FINAL LOGIC
 
@@ -390,16 +501,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
               /// LEFT SIDE
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     passenger.name,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -454,10 +562,11 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _passengerRowq(PassengerModel passenger, String tripStatus) {
-    final isActiveTrip = tripStatus.toLowerCase() == 'running' || 
-                         tripStatus.toLowerCase() == 'in_progress' || 
-                         tripStatus.toLowerCase() == 'started';
-    
+    final isActiveTrip =
+        tripStatus.toLowerCase() == 'running' ||
+        tripStatus.toLowerCase() == 'in_progress' ||
+        tripStatus.toLowerCase() == 'started';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -476,9 +585,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 children: [
                   Text(
                     passenger.name,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -496,7 +603,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         onPressed: () => _showOtpDialog(passenger.id),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           textStyle: const TextStyle(fontSize: 12),
                         ),
                         child: const Text("Verify"),
@@ -509,7 +619,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         onPressed: () {},
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           textStyle: const TextStyle(fontSize: 12),
                         ),
                         child: const Text("Cancel"),
@@ -527,7 +640,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   // ================= OTP POPUP =================
 
   void _showOtpDialog(int passengerId) {
-
     final controller = TextEditingController();
 
     showDialog(
@@ -539,12 +651,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             controller: controller,
             keyboardType: TextInputType.number,
             maxLength: 6,
-            decoration: const InputDecoration(
-              hintText: "Enter 6 digit OTP",
-            ),
+            decoration: const InputDecoration(hintText: "Enter 6 digit OTP"),
           ),
           actions: [
-
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text("Cancel"),
@@ -564,11 +673,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   void _verifyOtp(int passengerId, String otp) async {
-
-    final provider = Provider.of<DriverProvider>(
-      context,
-      listen: false,
-    );
+    final provider = Provider.of<DriverProvider>(context, listen: false);
 
     if (provider.tripDetails == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -592,7 +697,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       );
 
       if (result != null && mounted) {
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -605,9 +709,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
         // 🔄 Refresh trip details to update passenger status
         provider.getTripDetails(widget.tripId);
-
       } else if (mounted) {
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
