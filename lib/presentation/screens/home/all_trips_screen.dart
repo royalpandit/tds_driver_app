@@ -519,19 +519,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ElevatedButton(
-          //   onPressed: () => _cancelTrip(trip.id),
-          //   style: ElevatedButton.styleFrom(
-          //     backgroundColor: Colors.red.withValues(alpha: 0.1),
-          //     foregroundColor: Colors.red,
-          //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          //   ),
-          //   child: Text(
-          //     'Cancel',
-          //     style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-          //   ),
-          // ),
+
           ElevatedButton(
             onPressed: () => _completeTrip(trip.id),
             style: ElevatedButton.styleFrom(
@@ -551,7 +539,71 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           ),
         ],
       );
-    } else {
+    }
+    else if (status == 'completed') {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            final provider =
+            Provider.of<DriverProvider>(context, listen: false);
+
+            try {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Downloading invoice...',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                  backgroundColor: Colors.blue,
+                ),
+              );
+
+              await provider.downloadInvoice(trip.id);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Invoice downloaded successfully',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Download failed',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          icon: const Icon(Icons.download),
+          label: Text(
+            'Download Invoice',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 10,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      );
+    }
+
+    else {
       // Default buttons for other statuses
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -1471,4 +1523,46 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
         return Colors.black;
     }
   }
+  void _downloadInvoice(Trip trip) async {
+    try {
+      final driverProvider =
+      Provider.of<DriverProvider>(context, listen: false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Downloading invoice...',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      final result = await driverProvider.downloadInvoice(trip.id);
+
+      if (result != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Invoice downloaded successfully',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Download failed: $e',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+
 }

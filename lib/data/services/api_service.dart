@@ -1466,7 +1466,7 @@ class ApiService {
       }
 
       // ----------------------------------
-      // 🔴 HTTP error fallback
+      //  HTTP error fallback
       // ----------------------------------
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(
@@ -1475,13 +1475,14 @@ class ApiService {
       }
 
       // ----------------------------------
-      // 🔴 Unknown response
+      //  Unknown response
       // ----------------------------------
       throw Exception(body['message'] ?? 'Unexpected server response');
 
     } catch (e) {
-      print('❌ _handleResponse exception: $e');
-      throw Exception(e.toString());
+      print(' _handleResponse exception: $e');
+      //throw Exception(e.toString());
+      rethrow;
     }
   }
 

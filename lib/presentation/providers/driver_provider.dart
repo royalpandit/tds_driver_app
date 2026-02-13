@@ -586,8 +586,36 @@ class DriverProvider with ChangeNotifier {
       return false;
     }
   }
+  Future<Map<String, dynamic>?> verifyOtp(
+      int? tripId,
+      String otp, {
+        int? passengerId,
+        int? rideRequestId,
+      }) async {
 
-  Future<Map<String, dynamic>?> verifyOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId}) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _apiService.verifyTripOtp(
+        tripId,
+        otp,
+        passengerId: passengerId,
+        rideRequestId: rideRequestId,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return result;
+
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow; //  IMPORTANT
+    }
+  }
+
+  Future<Map<String, dynamic>?> verifyOtpq(int? tripId, String otp, {int? passengerId, int? rideRequestId}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
