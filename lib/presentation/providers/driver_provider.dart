@@ -593,7 +593,7 @@ class DriverProvider with ChangeNotifier {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return false;
+      rethrow; // Rethrow exception so screen can show actual error message
     }
   }
   Future<Map<String, dynamic>?> verifyOtp(

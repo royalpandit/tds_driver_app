@@ -185,7 +185,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: GoogleMap(
-          key: const ValueKey("AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4"),
+          key: const ValueKey("AIzaSyCSJmPsY5Am1uES-wfoW2Yk5qziMoJohMM"),
           initialCameraPosition: CameraPosition(
             target: _pickupLatLng!,
             zoom: 12,

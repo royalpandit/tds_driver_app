@@ -515,27 +515,55 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     } else if (status == 'running' ||
         status == 'in_progress' ||
         status == 'started') {
-      // Show Cancel on left and End on right for running trips
+      // While trip is running we want to always show Call and Map so
+      // driver can return to navigation or call passenger. Also show End button.
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-
-          ElevatedButton(
-            onPressed: () => _completeTrip(trip.id),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          // Optionally keep a placeholder or left-aligned widget in future
+          const SizedBox.shrink(),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => _callDriver(trip),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: Text(
-              'End',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => _openMap(trip),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.green.withValues(alpha: 0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
               ),
-            ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () => _completeTrip(trip.id),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: Text(
+                  'End',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -558,9 +586,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                   backgroundColor: Colors.blue,
                 ),
               );
-
               await provider.downloadInvoice(trip.id);
-
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -862,116 +888,132 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
   void _showOtpDialog(int tripId) {
     final TextEditingController otpController = TextEditingController();
+    bool isSubmitting = false;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Enter OTP to Start Ride',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Please enter the 6-digit OTP provided by the client to verify and start the ride.',
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                'Enter OTP to Start Ride',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
-                ),
-                decoration: InputDecoration(
-                  hintText: '000000',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 24,
-                    color: Colors.grey[300],
-                    letterSpacing: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                  counterText: '',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter OTP';
-                  }
-                  if (value.length != 6) {
-                    return 'OTP must be 6 digits';
-                  }
-                  if (!RegExp(r'^\d{6}$').hasMatch(value)) {
-                    return 'OTP must contain only digits';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final otp = otpController.text.trim();
-                if (otp.length == 6 && RegExp(r'^\d{6}$').hasMatch(otp)) {
-                  Navigator.of(context).pop();
-                  _proceedToStartTrip(tripId, otp);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Please enter a valid 6-digit OTP',
-                        style: GoogleFonts.poppins(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Please enter the 6-digit OTP provided by the client to verify and start the ride.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    enabled: !isSubmitting,
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 8,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '000000',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 24,
+                        color: Colors.grey[300],
+                        letterSpacing: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.blue, width: 2),
+                      ),
+                      counterText: '',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      color: isSubmitting ? Colors.grey : Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                'Verify & Start',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    final otp = otpController.text.trim();
+                    if (otp.length != 6 || !RegExp(r'^\d{6}$').hasMatch(otp)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Please enter a valid 6-digit OTP',
+                            style: GoogleFonts.poppins(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Set loading state
+                    setState(() {
+                      isSubmitting = true;
+                    });
+
+                    await _proceedToStartTrip(tripId, otp);
+                    
+                    // Reset loading state if dialog is still mounted
+                    if (mounted) {
+                      setState(() {
+                        isSubmitting = false;
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isSubmitting 
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'Verify & Start',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1061,31 +1103,15 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       }
     }
   }
-  void _proceedToStartTrip(int tripId, String otp) async {
+  Future<void> _proceedToStartTrip(int tripId, String otp) async {
     try {
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
       
-      bool success = await driverProvider.updateTripStatus(
+      await driverProvider.updateTripStatus(
         tripId,
         'running',
         otp: otp,
       );
-
-      if (!success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Invalid OTP code',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
-      }
 
       // Get trip details for tracking
       await driverProvider.getTripDetails(tripId);
@@ -1095,6 +1121,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       driverProvider.fetchTrips();
 
       if (mounted) {
+        // Close the OTP dialog
+        Navigator.of(context).pop();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1120,10 +1149,12 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Extract clean error message
+        String errorMsg = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error starting trip: $e',
+              errorMsg,
               style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -1134,37 +1165,48 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     }
   }
 
-  void _proceedToCompleteTrip(int tripId, String otp) async {
-
-    bool success = await Provider.of<DriverProvider>(
-      context,
-      listen: false,
-    ).updateTripStatus(
-      tripId,
-      'completed',
-      otp: otp,
-    );
-
-    if (!success) {
-      // ❌ Wrong OTP → popup open rahe
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid OTP code'),
-          backgroundColor: Colors.red,
-        ),
+  Future<void> _proceedToCompleteTrip(int tripId, String otp) async {
+    try {
+      await Provider.of<DriverProvider>(
+        context,
+        listen: false,
+      ).updateTripStatus(
+        tripId,
+        'completed',
+        otp: otp,
       );
-      return;
-    }
 
-    // ✅ Correct OTP → close popup
-    Navigator.of(context).pop();
-    Provider.of<DriverProvider>(context, listen: false).fetchTrips();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Trip completed successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      // ✅ Correct OTP → close popup
+      if (mounted) {
+        Navigator.of(context).pop();
+        Provider.of<DriverProvider>(context, listen: false).fetchTrips();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Trip completed successfully',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      // ❌ Show actual error message from API
+      if (mounted) {
+        String errorMsg = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              errorMsg,
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _proceedToCompleteTripq(int tripId, String otp) async {
@@ -1211,133 +1253,126 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
 
   void _showCompleteOtpDialog(int tripId) {
     final TextEditingController otpController = TextEditingController();
+    bool isSubmitting = false;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Enter OTP to Complete Trip',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Please enter the 6-digit OTP provided by the client to verify and complete the trip.',
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                'Enter OTP to Complete Trip',
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
-                ),
-                decoration: InputDecoration(
-                  hintText: '000000',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 24,
-                    color: Colors.grey[300],
-                    letterSpacing: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                  counterText: '',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter OTP';
-                  }
-                  if (value.length != 6) {
-                    return 'OTP must be 6 digits';
-                  }
-                  if (!RegExp(r'^\d{6}$').hasMatch(value)) {
-                    return 'OTP must contain only digits';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final otp = otpController.text.trim();
-
-                if (otp.isEmpty || otp.length != 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Please enter valid 6-digit OTP'),
-                      backgroundColor: Colors.red,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Please enter the 6-digit OTP provided by the client to verify and complete the trip.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
-                  );
-                  return;
-                }
-
-                _proceedToCompleteTrip(
-                  tripId,
-                  otp,
-                ); //  popup yahin se band nahi hoga
-              },
-
-              // onPressed: () {
-              //   final otp = otpController.text.trim();
-              //   if (otp.length == 6 && RegExp(r'^\d{6}$').hasMatch(otp)) {
-              //   //  Navigator.of(context).pop();
-              //     _proceedToCompleteTrip(tripId, otp);
-              //   } else {
-              //     ScaffoldMessenger.of(context).showSnackBar(
-              //       SnackBar(
-              //         content: Text(
-              //           'Please enter a valid 6-digit OTP',
-              //           style: GoogleFonts.poppins(color: Colors.white),
-              //         ),
-              //         backgroundColor: Colors.red,
-              //         behavior: SnackBarBehavior.floating,
-              //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              //       ),
-              //     );
-              //   }
-              // },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    enabled: !isSubmitting,
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 8,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '000000',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 24,
+                        color: Colors.grey[300],
+                        letterSpacing: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.blue, width: 2),
+                      ),
+                      counterText: '',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      color: isSubmitting ? Colors.grey : Colors.grey[700],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                'Verify & Complete',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: isSubmitting ? null : () async {
+                    final otp = otpController.text.trim();
+
+                    if (otp.isEmpty || otp.length != 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Please enter valid 6-digit OTP'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Set loading state
+                    setState(() {
+                      isSubmitting = true;
+                    });
+
+                    await _proceedToCompleteTrip(tripId, otp);
+                    
+                    // Reset loading state if dialog is still mounted
+                    if (mounted) {
+                      setState(() {
+                        isSubmitting = false;
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isSubmitting 
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        'Verify & Complete',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      ),
+                ),
+              ],
+            );
+          },
         );
       },
     );

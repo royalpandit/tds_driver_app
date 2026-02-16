@@ -1177,10 +1177,18 @@ class ApiService {
     final headers = await _getHeaders();
     headers['Content-Type'] = 'application/json';
 
+    // Get driver contact when OTP is being verified
+    String? contact;
+    if (otp != null) {
+      contact = await _storageService.getUserContact();
+      print('📱 Driver Contact: $contact');
+    }
+
     final body = jsonEncode({
       'id': tripId,
       'status': status,
       if (otp != null) 'otp': otp,
+      if (otp != null && contact != null) 'contact': contact,
       if (cancelReason != null) 'cancel_reason': cancelReason,
     });
     print('📝 Request Body: $body');
