@@ -484,7 +484,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _passengerRow(PassengerModel passenger, String tripStatus) {
-    final showActions = tripStatus.toLowerCase() == 'running';
+ //   final showActions = tripStatus.toLowerCase() == 'running';
+    final showActions =
+        passenger.status.toLowerCase() == 'waiting';
 
     //  FINAL LOGIC
 
