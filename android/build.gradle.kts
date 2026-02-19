@@ -19,9 +19,13 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
+
+// Performance optimization: Configure Gradle daemon
+gradle.startParameter.isBuildCacheEnabled = true
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)

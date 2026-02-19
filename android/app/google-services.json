@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "552039310635",
-    "project_id": "tds-soln",
-    "storage_bucket": "tds-soln.firebasestorage.app"
+    "project_number": "456204258662",
+    "project_id": "tdsdriver",
+    "storage_bucket": "tdsdriver.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:552039310635:android:a1387094bdc6a9dcfa116e",
+        "mobilesdk_app_id": "1:456204258662:android:6cb80575b56c970523cca7",
         "android_client_info": {
           "package_name": "com.traveldesk.driver"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAC3CxXeD5y6KqHnHgyznyPlIy4wjvFaPY"
+          "current_key": "AIzaSyASHkuHVT7tV5rSbBNOMfFkTROUyDMfdT4"
         }
       ],
       "services": {
