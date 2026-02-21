@@ -220,6 +220,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         children: [
           _infoRow("Request Type", ride.requestType),
           _infoRow("Trip Category", ride.tripCategory),
+          _infoRow("Trip Type", details.trip.tripType),
 
           _infoRow("Pickup", ride.pickupAddress),
           _infoRow("Drop", ride.dropAddress),

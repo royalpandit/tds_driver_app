@@ -113,6 +113,7 @@ class TripModel {
   final String status;
   final int id;
   final String tripDate;
+  final String tripType;
   final String? tripStart;
   final String? tripEnd;
   final VehicleModel vehicle;
@@ -124,6 +125,7 @@ class TripModel {
     required this.status,
     required this.id,
     required this.tripDate,
+    required this.tripType,
     this.tripStart,
     this.tripEnd,
     required this.vehicle,
@@ -138,6 +140,7 @@ class TripModel {
 
       id: json['id'] ?? 0,
       tripDate: json['trip_date'] ?? '',
+      tripType: json['trip_type'] ?? '',
       tripStart: json['trip_start'],
       tripEnd: json['trip_end'],
       vehicle: VehicleModel.fromJson(json['vehicle'] ?? {}),

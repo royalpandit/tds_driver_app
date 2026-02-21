@@ -159,6 +159,7 @@ class ApiService {
     String? firstName,
     String? lastName,
     int? gender,
+    String? firebaseToken,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verifyOtp}');
     // print('🌐 TDS API: POST $url');
@@ -174,6 +175,7 @@ class ApiService {
     if (firstName != null) body['first_name'] = firstName;
     if (lastName != null) body['last_name'] = lastName;
     if (gender != null) body['gender'] = gender.toString();
+    if (firebaseToken != null) body['firebase_token'] = firebaseToken;
     
     final bodyJson = jsonEncode(body);
     // print('📝 Request Body: $bodyJson');

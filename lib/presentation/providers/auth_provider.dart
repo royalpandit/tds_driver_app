@@ -39,7 +39,14 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final verifyResponse = await _apiService.verifyOtp(contact, otpCode, userType, firstName: firstName, lastName: lastName, gender: gender);
+      // Get FCM token for login (not for registration)
+      String? fcmToken;
+      if (firstName == null && lastName == null && gender == null) {
+        final firebaseService = FirebaseService();
+        fcmToken = await firebaseService.getSavedFCMToken();
+      }
+      
+      final verifyResponse = await _apiService.verifyOtp(contact, otpCode, userType, firstName: firstName, lastName: lastName, gender: gender, firebaseToken: fcmToken);
       
       // Check if verify-otp already returned the token (TDS API behavior)
       String? token;
@@ -220,7 +227,40 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<bool> verifyDriverOtp(String email, String otpCode) async {
-    return verifyOtp(email, otpCode, 'driver', expectToken: true);
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // Get FCM token
+      final firebaseService = FirebaseService();
+      final fcmToken = await firebaseService.getSavedFCMToken();
+      
+      final verifyResponse = await _apiService.verifyOtp(email, otpCode, 'driver', firebaseToken: fcmToken);
+      
+      // Check if verify-otp already returned the token (TDS API behavior)
+      String? token;
+      if (verifyResponse['data'] != null && verifyResponse['data']['user'] != null) {
+        token = verifyResponse['data']['user']['api_token'];
+      }
+      
+      if (token != null) {
+        await _storageService.saveToken(token);
+        await _storageService.saveUserData(email, 'driver');
+        await _storageService.setLoggedIn(true);
+        
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        throw Exception('OTP verification successful but no token received');
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> registerDriver({
