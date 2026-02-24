@@ -31,22 +31,51 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tripTypeTabController = TabController(length: _tripTypeTabs.length, vsync: this);
-    _tripTypeTabController.addListener(() {
-      if (!_tripTypeTabController.indexIsChanging) {
-        setState(() {
-          _selectedTripType = _tripTypeTabs[_tripTypeTabController.index];
-        });
-      }
-    });
+    try {
+      _tripTypeTabController = TabController(length: _tripTypeTabs.length, vsync: this);
+      _tripTypeTabController.addListener(() {
+        if (!_tripTypeTabController.indexIsChanging && mounted) {
+          setState(() {
+            _selectedTripType = _tripTypeTabs[_tripTypeTabController.index];
+          });
+        }
+      });
+    } catch (e) {
+      print('Error initializing TabController: $e');
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTrips();
+      if (mounted) {
+        _loadTrips();
+      }
     });
   }
 
   Future<void> _loadTrips() async {
-    final provider = Provider.of<DriverProvider>(context, listen: false);
-    await provider.fetchTrips();
+    try {
+      if (!mounted) return;
+      final provider = Provider.of<DriverProvider>(context, listen: false);
+      await provider.fetchTrips();
+    } catch (e) {
+      print('Error loading trips: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error loading trips: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _tripTypeTabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -175,13 +204,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         ? trips
                         : trips
                               .where((trip) =>
-                                  trip.status.toLowerCase() ==
+                                  (trip.status ?? '').toLowerCase() ==
                                   _selectedFilter.toLowerCase())
                               .toList();
                     // then apply trip type filter
                     if (_selectedTripType != 'All') {
                       filteredTrips = filteredTrips.where((trip) {
-                        final tt = trip.tripType.isEmpty ? 'Normal' : trip.tripType;
+                        final tt = (trip.tripType ?? '').isEmpty ? 'Normal' : (trip.tripType ?? '');
                         return tt.toLowerCase() == _selectedTripType.toLowerCase();
                       }).toList();
                     }
@@ -397,197 +426,231 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   Widget _buildTripCard(Trip trip) {
-    Color statusColor;
-    IconData statusIcon;
+    try {
+      Color statusColor;
+      IconData statusIcon;
 
-    switch (trip.status.toLowerCase()) {
-      case 'completed':
-        statusColor = Colors.green;
-        statusIcon = Ionicons.checkmark_circle_outline;
-        break;
-      case 'cancelled':
-        statusColor = Colors.red;
-        statusIcon = Ionicons.close_circle_outline;
-        break;
-      case 'planned':
-        statusColor = Colors.orange;
-        statusIcon = Ionicons.time_outline;
-        break;
-      default:
-        statusColor = Colors.orange;
-        statusIcon = Ionicons.time_outline;
-    }
+      final status = (trip.status ?? '').toLowerCase();
+      switch (status) {
+        case 'completed':
+          statusColor = Colors.green;
+          statusIcon = Ionicons.checkmark_circle_outline;
+          break;
+        case 'cancelled':
+          statusColor = Colors.red;
+          statusIcon = Ionicons.close_circle_outline;
+          break;
+        case 'planned':
+          statusColor = Colors.orange;
+          statusIcon = Ionicons.time_outline;
+          break;
+        default:
+          statusColor = Colors.orange;
+          statusIcon = Ionicons.time_outline;
+      }
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TripDetailsScreen(
-              tripId: trip.id, // 👈 Trip ID yahan pass ho rahi hai
+      final driverName = trip.driver?.name ?? 'Unknown Driver';
+      final vehicleModel = trip.vehicle?.model ?? 'Vehicle';
+      final vehiclePlate = trip.vehicle?.numberPlate ?? 'N/A';
+      final tripType = (trip.tripType ?? '').isEmpty ? 'Normal' : trip.tripType;
+      final tripDateStr = (trip.tripDate ?? '').isNotEmpty 
+        ? app_date_utils.AppDateUtils.formatDate(trip.tripDate)
+        : 'No date';
+
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TripDetailsScreen(
+                tripId: trip.id,
+              ),
             ),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        );
-      },
-      child: Container(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Ionicons.car_outline,
+                        color: AppColors.lightPrimary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Trip #${trip.id}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(statusIcon, size: 16, color: statusColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          trip.status ?? 'Unknown',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  const Icon(Ionicons.person_outline, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$driverName • ${trip.employeesCount ?? 0} passengers',
+                      style: GoogleFonts.poppins(color: Colors.grey[700]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Ionicons.calendar_outline,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          tripDateStr,
+                          style: GoogleFonts.poppins(),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Ionicons.car_outline,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$vehicleModel - $vehiclePlate',
+                            style: GoogleFonts.poppins(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Ionicons.navigate_outline,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          tripType,
+                          style: GoogleFonts.poppins(),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              _buildTripActionButtons(trip),
+            ],
+          ),
+        ),
+      );
+    } catch (e) {
+      print('⚠️ Error building trip card: $e');
+      return Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          border: Border.all(color: Colors.red.shade200),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // ===== Header =====
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Ionicons.car_outline,
-                      color: AppColors.lightPrimary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Trip #${trip.id}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(statusIcon, size: 16, color: statusColor),
-                      const SizedBox(width: 6),
-                      Text(
-                        trip.status,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // ===== Driver Info =====
-            Row(
-              children: [
-                const Icon(Ionicons.person_outline, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${trip.driver.name} • ${trip.employeesCount} passengers',
-                    style: GoogleFonts.poppins(color: Colors.grey[700]),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // ===== Trip Details =====
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Ionicons.calendar_outline,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        app_date_utils.AppDateUtils.formatDate(trip.tripDate),
-                        style: GoogleFonts.poppins(),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      const Icon(
-                        Ionicons.car_outline,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${trip.vehicle.model} - ${trip.vehicle.numberPlate}',
-                          style: GoogleFonts.poppins(),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Row(
-                    children: [
-                      const Icon(
-                        Ionicons.navigate_outline,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                          trip.tripType.isEmpty ? 'Normal' : trip.tripType,
-                          style: GoogleFonts.poppins(),
-                        ),
-                    ],
-                  ),
-                ],
+            Icon(Ionicons.alert_circle_outline, color: Colors.red),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Trip #${trip.id} - Data unavailable',
+                style: GoogleFonts.poppins(color: Colors.grey[700]),
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            _buildTripActionButtons(trip),
           ],
         ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _buildTripActionButtons(Trip trip) {
-    final status = trip.status.toLowerCase();
+    try {
+      final status = (trip.status ?? '').toLowerCase();
 
-    if (status == 'planned' || status == 'confirmed') {
+      if (status == 'planned' || status == 'confirmed') {
       // Show Cancel on left, Call, Map, and Start Now on right for planned trips
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -830,6 +893,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         ],
       );
     }
+    } catch (e) {
+      print('⚠️ Error building trip action buttons: $e');
+      return const SizedBox.shrink();
+    }
   }
 
   void _cancelTrip(int tripId) {
@@ -910,6 +977,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   void _initiateTripCancellation(int tripId, String reason) async {
+    if (!mounted) return;
     try {
       // First API call to send OTP
       bool success = await Provider.of<DriverProvider>(
@@ -917,19 +985,33 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         listen: false,
       ).updateTripStatus(tripId, 'cancelled', cancelReason: reason);
 
-      if (success) {
+      if (mounted && success) {
         _showCancelOtpDialog(tripId, reason);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to initiate cancellation',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to initiate cancellation',
-            style: GoogleFonts.poppins(color: Colors.white),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to initiate cancellation: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -1018,6 +1100,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   void _proceedToCancelTrip(int tripId, String reason, String otp) async {
+    if (!mounted) return;
     try {
       await Provider.of<DriverProvider>(
         context,
@@ -1038,13 +1121,19 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             ),
           ),
         );
+        // Reload trips after successful cancellation
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            _loadTrips();
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to cancel trip: $e',
+              'Failed to cancel trip: ${e.toString()}',
               style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -1481,41 +1570,53 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   void _callDriver(Trip trip) {
-    // Implement phone call functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Call feature not implemented yet',
-          style: GoogleFonts.poppins(color: Colors.white),
+    if (!mounted) return;
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Call feature not implemented yet',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.blue,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        backgroundColor: Colors.blue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      );
+    } catch (e) {
+      print('Error in _callDriver: $e');
+    }
   }
 
   void _openMap(Trip trip) async {
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
+    if (!mounted) return;
     try {
+      // Show loading indicator
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
       // Get trip details for map navigation
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
       await driverProvider.getTripDetails(trip.id);
       
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Close loading dialog safely
+      try {
+        Navigator.of(context).pop();
+      } catch (e) {
+        print('Error closing loading dialog: $e');
+      }
 
       final tripDetails = driverProvider.tripDetails;
       
-      if (tripDetails != null) {
+      if (mounted && tripDetails != null) {
         // Navigate to trip tracking screen
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -1525,7 +1626,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             ),
           ),
         );
-      } else {
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1539,11 +1640,14 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        try {
+          Navigator.of(context).pop(); // Try to close loading dialog
+        } catch (_) {}
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error loading map: $e',
+              'Error loading map: ${e.toString()}',
               style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -1555,47 +1659,56 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   void _showFilterDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Select Filter',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ...['All', 'Completed', 'Planned', 'Cancelled', 'Clear'].map(
-                (filter) => ListTile(
-                  leading: Icon(
-                    _getFilterIcon(filter),
-                    color: _getFilterColor(filter),
+    if (!mounted) return;
+    try {
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Select Filter',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  title: Text(filter, style: GoogleFonts.poppins()),
-                  onTap: () {
-                    if (filter == 'Clear') {
-                      setState(() => _selectedFilter = 'All');
-                    } else {
-                      setState(() => _selectedFilter = filter);
-                    }
-                    Navigator.pop(context);
-                  },
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+                const SizedBox(height: 20),
+                ...['All', 'Completed', 'Planned', 'Cancelled', 'Clear'].map(
+                  (filter) => ListTile(
+                    leading: Icon(
+                      _getFilterIcon(filter),
+                      color: _getFilterColor(filter),
+                    ),
+                    title: Text(filter, style: GoogleFonts.poppins()),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (mounted) {
+                        setState(() {
+                          if (filter == 'Clear') {
+                            _selectedFilter = 'All';
+                          } else {
+                            _selectedFilter = filter;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Error showing filter dialog: $e');
+    }
   }
 
   IconData _getFilterIcon(String filter) {

@@ -123,9 +123,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Consumer<driver_provider.DriverProvider>(
                         builder: (context, provider, child) {
                           final runningTrips = provider.trips.where((trip) => 
-                            trip.status.toLowerCase() == 'running' || 
-                            trip.status.toLowerCase() == 'in_progress' || 
-                            trip.status.toLowerCase() == 'started'
+                            (trip.status ?? '').toLowerCase() == 'running' || 
+                            (trip.status ?? '').toLowerCase() == 'in_progress' || 
+                            (trip.status ?? '').toLowerCase() == 'started'
                           ).toList();
                           
                           if (runningTrips.isNotEmpty) {
@@ -1432,11 +1432,12 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${trip.driver.name} • ${trip.employeesCount} passengers',
+                  '${trip.driver?.name?? 'Unknown Driver'} • ${trip.employeesCount ?? 0} passengers',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.grey[700],
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -1502,9 +1503,9 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Filter for completed trips and sort by date descending
         final completedTrips = trips
-            .where((trip) => trip.status.toLowerCase() == 'completed')
+            .where((trip) => (trip.status ?? '').toLowerCase() == 'completed')
             .toList();
-        completedTrips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
+        completedTrips.sort((a, b) => (b.tripDate ?? '').compareTo(a.tripDate ?? ''));
         
         if (completedTrips.isEmpty) {
           return Container(
