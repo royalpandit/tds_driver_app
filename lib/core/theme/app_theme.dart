@@ -74,6 +74,18 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          return AppColors.lightPrimary;
+        }),
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          // make the track transparent when active, grey when off
+          if (states.contains(MaterialState.selected)) {
+            return Colors.transparent;
+          }
+          return Colors.grey.shade400;
+        }),
+      ),
       cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -153,6 +165,17 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.darkPrimary, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          return AppColors.lightPrimary;
+        }),
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
+            return Colors.transparent;
+          }
+          return Colors.grey.shade700;
+        }),
       ),
       cardTheme: CardThemeData(
         elevation: 2,

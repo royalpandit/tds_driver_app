@@ -8,7 +8,9 @@ import '../../widgets/floating_bottom_nav.dart' as floating_nav;
 import '../../../core/constants/app_colors.dart' as app_colors;
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
+import '../../../presentation/widgets/trip_card.dart';
 import 'all_trips_screen.dart' as all_trips;
+import 'trip_details_screen.dart';
 import '../../providers/driver_provider.dart' as driver_provider;
 import 'trip_tracking_screen.dart';
 // import '../../../data/models/trip_model.dart';
@@ -390,7 +392,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        request.rideRequest.customer?.name ?? 'Unknown Passenger',
+                        // prefer company name when available (corporate booking)
+                        request.rideRequest.corporate?.name?.isNotEmpty == true
+                            ? request.rideRequest.corporate!.name
+                            : (request.rideRequest.customer?.name ?? 'Unknown Passenger'),
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -730,7 +735,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Text(
                   'Enter OTP to Accept Ride',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                  ),
                 ),
               ),
             ],
@@ -1250,7 +1258,26 @@ class _HomeScreenState extends State<HomeScreen> {
         final isLoading = provider.isLoading;
         
         if (isLoading) {
-          return _buildLoadingCard();
+          // show a simple three-dot loader instead of the normal card spinner
+          return SizedBox(
+            height: 270,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(3, (i) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.6),
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                }),
+              ),
+            ),
+          );
         }
         
         if (pendingRequests.isEmpty) {
@@ -1280,21 +1307,26 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         final screenWidth = MediaQuery.of(context).size.width;
         final cardWidth = (screenWidth - 52).clamp(280.0, 370.0); // 52 = 20 left + 20 right + 12 margin
-        
+
         return SizedBox(
           height: 270,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.zero,
-            itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
-            itemBuilder: (context, index) {
-              final request = pendingRequests[index];
-              return Container(
-                width: cardWidth,
-                margin: const EdgeInsets.only(right: 12),
-                child: _buildRideRequestCard(request),
-              );
-            },
+          child: Scrollbar(
+            thumbVisibility: true,
+            thickness: 6,
+            radius: const Radius.circular(3),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
+              itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
+              itemBuilder: (context, index) {
+                final request = pendingRequests[index];
+                return Container(
+                  width: cardWidth,
+                  margin: const EdgeInsets.only(right: 12),
+                  child: _buildRideRequestCard(request),
+                );
+              },
+            ),
           ),
         );
 
@@ -1468,10 +1500,11 @@ class _HomeScreenState extends State<HomeScreen> {
           return _buildLoadingCard();
         }
         
-        // Filter for completed trips
-        final completedTrips = trips.where((trip) => 
-          trip.status.toLowerCase() == 'completed'
-        ).toList();
+        // Filter for completed trips and sort by date descending
+        final completedTrips = trips
+            .where((trip) => trip.status.toLowerCase() == 'completed')
+            .toList();
+        completedTrips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
         
         if (completedTrips.isEmpty) {
           return Container(
@@ -1500,74 +1533,19 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         
         return Column(
-          children: completedTrips.take(3).map((trip) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Trip #${trip.id}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      '${trip.routes.morning?.name ?? 'N/A'} → ${trip.routes.evening?.name ?? 'N/A'}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹0', // TODO: Add fare field to Trip model or get from API
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Completed',
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )).toList(),
+          children: completedTrips.take(3).map((trip) {
+            return TripCardWidget(
+              trip: trip,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TripDetailsScreen(tripId: trip.id),
+                  ),
+                );
+              },
+            );
+          }).toList(),
         );
       },
     );

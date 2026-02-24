@@ -444,27 +444,39 @@ class DriverProvider with ChangeNotifier {
     }
   }
 
-  // Get trip details
+  // Cache for trip details by id. This allows the trips list to quickly
+  // look up extra information (like request_type) without re‑fetching every
+  // time. `getTripDetails` will populate this map.
+  final Map<int, TripDetailsResponseModel?> tripDetailsCache = {};
+
+  // Last fetched single response for convenience (mostly used by details screen)
   TripDetailsResponseModel? tripDetails;
 
-  Future<void> getTripDetails(int tripId) async {
+  Future<TripDetailsResponseModel?> getTripDetails(int tripId) async {
+    // return cached value if available immediately
+    if (tripDetailsCache.containsKey(tripId)) {
+      tripDetails = tripDetailsCache[tripId];
+      return tripDetails;
+    }
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-
-      tripDetails = await _apiService.getTripDetails(tripId);
+      final details = await _apiService.getTripDetails(tripId);
+      tripDetails = details;
+      tripDetailsCache[tripId] = details;
 
       _isLoading = false;
       notifyListeners();
 
+      return tripDetails;
     } catch (e) {
-
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
+      return null;
     }
   }
 

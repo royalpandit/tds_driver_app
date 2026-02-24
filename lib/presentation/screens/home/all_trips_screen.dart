@@ -8,6 +8,7 @@ import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
+import '../../../data/models/trip_details_response_model.dart';
 import '../../providers/driver_provider.dart';
 import 'home_screen.dart';
 import 'trip_tracking_screen.dart';
@@ -19,15 +20,33 @@ class AllTripsScreen extends StatefulWidget {
   State<AllTripsScreen> createState() => _AllTripsScreenState();
 }
 
-class _AllTripsScreenState extends State<AllTripsScreen> {
+class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProviderStateMixin {
   String _selectedFilter = 'All';
+
+  // track which trip type tab is selected
+  late TabController _tripTypeTabController;
+  final List<String> _tripTypeTabs = ['All', 'Round', 'Normal'];
+  String _selectedTripType = 'All';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<DriverProvider>(context, listen: false).fetchTrips();
+    _tripTypeTabController = TabController(length: _tripTypeTabs.length, vsync: this);
+    _tripTypeTabController.addListener(() {
+      if (!_tripTypeTabController.indexIsChanging) {
+        setState(() {
+          _selectedTripType = _tripTypeTabs[_tripTypeTabController.index];
+        });
+      }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadTrips();
+    });
+  }
+
+  Future<void> _loadTrips() async {
+    final provider = Provider.of<DriverProvider>(context, listen: false);
+    await provider.fetchTrips();
   }
 
   @override
@@ -48,6 +67,20 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
             // Header
             _buildHeader(),
 
+            // Trip type tabs (All / Round / Normal)
+            Container(
+              color: Colors.white,
+              child: TabBar(
+                controller: _tripTypeTabController,
+                indicatorColor: AppColors.lightPrimary,
+                indicatorWeight: 3,
+                labelColor: AppColors.lightPrimary,
+                unselectedLabelColor: Colors.grey,
+                labelStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                unselectedLabelStyle: GoogleFonts.poppins(fontSize: 14),
+                tabs: _tripTypeTabs.map((t) => Tab(text: t)).toList(),
+              ),
+            ),
             // Trips List
             Expanded(
               child: Container(
@@ -57,41 +90,192 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                 ),
                 child: Consumer<DriverProvider>(
                   builder: (context, driverProvider, child) {
+                    // Show loading indicator
                     if (driverProvider.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Loading trips...',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     }
 
-                    if (driverProvider.errorMessage != null) {
+                    // Show error message if API call failed
+                    if (driverProvider.errorMessage != null && driverProvider.trips.isEmpty) {
+                      return Center(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Ionicons.alert_circle_outline,
+                                size: 64,
+                                color: Colors.red.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error loading trips',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Text(
+                                  driverProvider.errorMessage ?? 'An error occurred',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () => _loadTrips(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.lightPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Retry',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Get trips and apply status filter first
+                    final trips = driverProvider.trips;
+                    var filteredTrips = _selectedFilter == 'All'
+                        ? trips
+                        : trips
+                              .where((trip) =>
+                                  trip.status.toLowerCase() ==
+                                  _selectedFilter.toLowerCase())
+                              .toList();
+                    // then apply trip type filter
+                    if (_selectedTripType != 'All') {
+                      filteredTrips = filteredTrips.where((trip) {
+                        final tt = trip.tripType.isEmpty ? 'Normal' : trip.tripType;
+                        return tt.toLowerCase() == _selectedTripType.toLowerCase();
+                      }).toList();
+                    }
+
+                    // Show empty state if no trips
+                    if (trips.isEmpty) {
+                      return Center(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Ionicons.document_text_outline,
+                                size: 64,
+                                color: Colors.grey.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No trips yet',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Your completed trips will appear here',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () => _loadTrips(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.lightPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Refresh',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Show filtered empty state
+                    if (filteredTrips.isEmpty && _selectedFilter != 'All') {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Ionicons.alert_circle_outline,
+                              Ionicons.document_text_outline,
                               size: 64,
-                              color: Colors.red.withValues(alpha: 0.7),
+                              color: Colors.grey.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Error loading trips',
+                              'No $_selectedFilter trips',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
-                                color: Colors.red,
                                 fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             Text(
-                              driverProvider.errorMessage!,
+                              'No trips matching this filter',
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
-                                color: Colors.grey[600],
+                                color: Colors.grey[500],
                               ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 20),
                             ElevatedButton(
-                              onPressed: () => driverProvider.fetchTrips(),
+                              onPressed: () {
+                                setState(() => _selectedFilter = 'All');
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.lightPrimary,
                                 shape: RoundedRectangleBorder(
@@ -103,7 +287,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                                 ),
                               ),
                               child: Text(
-                                'Retry',
+                                'Clear Filter',
                                 style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -114,28 +298,17 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                       );
                     }
 
-                    final trips = driverProvider.trips;
-                    final filteredTrips = _selectedFilter == 'All'
-                        ? trips
-                        : trips
-                              .where(
-                                (trip) =>
-                                    trip.status.toLowerCase() ==
-                                    _selectedFilter.toLowerCase(),
-                              )
-                              .toList();
-
-                    if (filteredTrips.isEmpty) {
-                      return _buildEmptyState();
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
-                      itemCount: filteredTrips.length,
-                      itemBuilder: (context, index) {
-                        final trip = filteredTrips[index];
-                        return _buildTripCard(trip);
-                      },
+                    // Show trips list
+                    return RefreshIndicator(
+                      onRefresh: () => _loadTrips(),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
+                        itemCount: filteredTrips.length,
+                        itemBuilder: (context, index) {
+                          final trip = filteredTrips[index];
+                          return _buildTripCard(trip);
+                        },
+                      ),
                     );
                   },
                 ),
@@ -217,36 +390,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
               fontSize: 14,
               color: Colors.white.withValues(alpha: 0.8),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Ionicons.document_text_outline,
-            size: 64,
-            color: Colors.grey.withValues(alpha: 0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No trips found',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your completed trips will appear here',
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -422,7 +565,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 8),
-                      Text(trip.tripType, style: GoogleFonts.poppins()),
+                      Text(
+                          trip.tripType.isEmpty ? 'Normal' : trip.tripType,
+                          style: GoogleFonts.poppins(),
+                        ),
                     ],
                   ),
                 ],
@@ -567,65 +713,91 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
           ),
         ],
       );
-    }
-    else if (status == 'completed') {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: ElevatedButton.icon(
-          onPressed: () async {
-            final provider =
-            Provider.of<DriverProvider>(context, listen: false);
+    } else if (status == 'completed') {
+      // Completed trip cards need to hide invoice button when the underlying
+      // request is of type `roster_auto`. If the trip model already contains
+      // the flag we can skip any API call entirely.
+      if (trip.requestType.toLowerCase() == 'roster_auto') {
+        return const SizedBox.shrink();
+      }
 
-            try {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Downloading invoice...',
-                    style: GoogleFonts.poppins(color: Colors.white),
-                  ),
-                  backgroundColor: Colors.blue,
-                ),
-              );
-              await provider.downloadInvoice(trip.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Invoice downloaded successfully',
-                    style: GoogleFonts.poppins(color: Colors.white),
-                  ),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Download failed',
-                    style: GoogleFonts.poppins(color: Colors.white),
-                  ),
-                  backgroundColor: Colors.red,
-                ),
-              );
+      return FutureBuilder<TripDetailsResponseModel?>(
+        future: Provider.of<DriverProvider>(context, listen: false)
+            .getTripDetails(trip.id),
+        builder: (context, snapshot) {
+          bool isRosterAuto = false;
+          if (snapshot.hasData) {
+            final details = snapshot.data!;
+            if (details.rideRequest.requestType.toLowerCase() ==
+                'roster_auto') {
+              isRosterAuto = true;
             }
-          },
-          icon: const Icon(Icons.download),
-          label: Text(
-            'Download Invoice',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
+          }
+
+          if (isRosterAuto) {
+            return const SizedBox.shrink();
+          }
+
+          // show invoice button after data loads
+          return Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final provider =
+                    Provider.of<DriverProvider>(context, listen: false);
+
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Downloading invoice...',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                  await provider.downloadInvoice(trip.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Invoice downloaded successfully',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Download failed',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.download),
+              label: Text(
+                'Download Invoice',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 10,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
+          );
+        },
       );
     }
 
@@ -1044,65 +1216,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     }
   }
 
-  // void _startTrip(int tripId) async {
-  //   _showOtpDialog(tripId);
-  // }
-
-  void _proceedToStartTripq(int tripId, String otp) async {
-    try {
-      // Start the trip with OTP verification
-      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
-      await driverProvider.updateTripStatus(tripId, 'running', otp: otp);
-
-      // Get trip details for tracking
-      await driverProvider.getTripDetails(tripId);
-      final tripDetails = driverProvider.tripDetails;
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Trip started successfully',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-
-        // Navigate to trip tracking screen
-        if (tripDetails != null) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TripTrackingScreen(
-                tripId: tripId,
-                tripDetails: tripDetails,
-              ),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to start trip: $e',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    }
-  }
+  
   Future<void> _proceedToStartTrip(int tripId, String otp) async {
     try {
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
@@ -1209,47 +1323,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
     }
   }
 
-  void _proceedToCompleteTripq(int tripId, String otp) async {
-    try {
-      // Complete the trip with OTP verification
-      await Provider.of<DriverProvider>(
-        context,
-        listen: false,
-      ).updateTripStatus(tripId, 'completed', otp: otp);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Trip completed successfully',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Failed to complete trip: $e',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    }
-  }
 
   void _showCompleteOtpDialog(int tripId) {
     final TextEditingController otpController = TextEditingController();
@@ -1556,46 +1629,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> {
         return Colors.grey;
       default:
         return Colors.black;
-    }
-  }
-  void _downloadInvoice(Trip trip) async {
-    try {
-      final driverProvider =
-      Provider.of<DriverProvider>(context, listen: false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Downloading invoice...',
-            style: GoogleFonts.poppins(color: Colors.white),
-          ),
-          backgroundColor: Colors.blue,
-        ),
-      );
-
-      final result = await driverProvider.downloadInvoice(trip.id);
-
-      if (result != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Invoice downloaded successfully',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Download failed: $e',
-            style: GoogleFonts.poppins(color: Colors.white),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

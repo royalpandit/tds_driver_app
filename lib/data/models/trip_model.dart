@@ -153,6 +153,7 @@ class Trip {
   final String tripDate;
   final String tripType;
   final String status;
+  final String requestType;
   final TripRoutes routes;
   final Vehicle vehicle;
   final DriverSummary driver;
@@ -163,6 +164,7 @@ class Trip {
     required this.tripDate,
     required this.tripType,
     required this.status,
+    required this.requestType,
     required this.routes,
     required this.vehicle,
     required this.driver,
@@ -175,6 +177,7 @@ class Trip {
       tripDate: json['trip_date'] ?? '',
       tripType: json['trip_type'] ?? '',
       status: json['status'] ?? '',
+      requestType: json['request_type'] ?? '',
       routes: TripRoutes.fromJson(json['routes'] ?? {}),
       vehicle: Vehicle.fromJson(json['vehicle'] ?? {}),
       driver: DriverSummary.fromJson(json['driver'] ?? {}),

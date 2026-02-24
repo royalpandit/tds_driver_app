@@ -220,7 +220,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         children: [
           _infoRow("Request Type", ride.requestType),
           _infoRow("Trip Category", ride.tripCategory),
-          _infoRow("Trip Type", details.trip.tripType),
+          _infoRow("Trip Type", details.trip.tripType.isEmpty ? 'Normal' : details.trip.tripType),
 
           _infoRow("Pickup", ride.pickupAddress),
           _infoRow("Drop", ride.dropAddress),
@@ -238,48 +238,50 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           _infoRow("Vehicle", details.trip.vehicle.model),
           _infoRow("Driver", details.trip.driver.name),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final provider = Provider.of<DriverProvider>(
-                      context,
-                      listen: false,
-                    );
-                    try {
-                      final result = await provider.downloadInvoice(
-                        details.trip.id,
+          // Show download invoice button only if request type is not roster_auto
+          if (ride.requestType != 'roster_auto')
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final provider = Provider.of<DriverProvider>(
+                        context,
+                        listen: false,
                       );
-                      if (result == null) {
+                      try {
+                        final result = await provider.downloadInvoice(
+                          details.trip.id,
+                        );
+                        if (result == null) {
+                          if (mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Unable to download invoice'),
+                              ),
+                            );
+                        } else {
+                          if (mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Invoice opened: $result')),
+                            );
+                        }
+                      } catch (e) {
                         if (mounted)
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Unable to download invoice'),
-                            ),
-                          );
-                      } else {
-                        if (mounted)
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Invoice opened: $result')),
+                            SnackBar(content: Text('Error: ${e.toString()}')),
                           );
                       }
-                    } catch (e) {
-                      if (mounted)
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: ${e.toString()}')),
-                        );
-                    }
-                  },
-                  icon: const Icon(Icons.download),
-                  label: const Text('Download Invoice'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.lightPrimary,
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Download Invoice'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.lightPrimary,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
