@@ -1008,16 +1008,8 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  Future<List<Trip>> getTrips({
-    int? page,
-    int? perPage,
-  }) async {
-    final queryParams = <String, String>{};
-    if (page != null) queryParams['page'] = page.toString();
-    if (perPage != null) queryParams['per_page'] = perPage.toString();
-
-    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.trips}')
-        .replace(queryParameters: queryParams);
+  Future<List<Trip>> getTrips() async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.trips}');
     // print('🌐 TDS API: GET $url');
     final headers = await _getHeaders();
     // print('📋 Headers: $headers');

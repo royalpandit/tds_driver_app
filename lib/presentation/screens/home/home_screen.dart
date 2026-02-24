@@ -1310,11 +1310,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return SizedBox(
           height: 270,
-          child: Scrollbar(
-            thumbVisibility: true,
-            thickness: 6,
-            radius: const Radius.circular(3),
-            child: ListView.builder(
+          child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
               itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
@@ -1326,7 +1322,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _buildRideRequestCard(request),
                 );
               },
-            ),
           ),
         );
 

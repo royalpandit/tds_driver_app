@@ -422,17 +422,14 @@ class DriverProvider with ChangeNotifier {
   }
 
   // Fetch trips
-  Future<bool> fetchTrips({int? page, int? perPage}) async
+  Future<bool> fetchTrips() async
   {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _trips = await _apiService.getTrips(
-        page: page,
-        perPage: perPage,
-      );
+      _trips = await _apiService.getTrips();
       _isLoading = false;
       notifyListeners();
       return true;
