@@ -238,8 +238,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           _infoRow("Vehicle", details.trip.vehicle.model),
           _infoRow("Driver", details.trip.driver.name),
           const SizedBox(height: 12),
-          // Show download invoice button only if request type is not roster_auto
-          if (ride.requestType != 'roster_auto')
+          // Show download invoice button only if request type is not roster_auto or corporate
+          if (ride.requestType != 'roster_auto' && ride.requestType != 'corporate')
             Row(
               children: [
                 Expanded(
