@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_utils.dart' as app_date_utils;
+import 'package:traveldesk_driver/core/utils/string_utils.dart';
 import '../../data/models/trip_model.dart';
 
 /// A reusable card for displaying a trip.  This mirrors the design used in
@@ -90,7 +91,7 @@ class TripCardWidget extends StatelessWidget {
                       Icon(statusIcon, size: 16, color: statusColor),
                       const SizedBox(width: 6),
                       Text(
-                        trip.status,
+                        StringUtils.toTitleCase(trip.status),
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -174,7 +175,7 @@ class TripCardWidget extends StatelessWidget {
                         color: Colors.grey,
                       ),
                       const SizedBox(width: 8),
-                      Text(trip.tripType.isEmpty ? 'Normal' : trip.tripType, style: GoogleFonts.poppins()),
+                      Text(StringUtils.toTitleCase(trip.tripType.isEmpty ? 'Normal' : trip.tripType), style: GoogleFonts.poppins()),
                     ],
                   ),
                 ],

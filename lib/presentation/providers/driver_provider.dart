@@ -11,8 +11,6 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:flutter/foundation.dart';
-
 class DriverProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
@@ -612,6 +610,8 @@ class DriverProvider with ChangeNotifier {
       String otp, {
         int? passengerId,
         int? rideRequestId,
+        String? cancelReason,
+        String? status,
       }) async {
 
     _isLoading = true;
@@ -623,6 +623,8 @@ class DriverProvider with ChangeNotifier {
         otp,
         passengerId: passengerId,
         rideRequestId: rideRequestId,
+        cancelReason: cancelReason,
+        status: status,
       );
 
       // Invalidate cached trip details so next fetch gets fresh passenger status

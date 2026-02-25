@@ -1198,7 +1198,7 @@ class ApiService {
     return data['status'] == true; // 👈 success only
   }
 
-  Future<dynamic> verifyTripOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId}) async {
+  Future<dynamic> verifyTripOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId, String? cancelReason, String? status}) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripVerifyOtp}');
     print('🌐 TDS API: POST $url (VERIFY OTP)');
     final headers = await _getHeaders();
@@ -1209,6 +1209,8 @@ class ApiService {
       if (rideRequestId != null) 'ride_request_id': rideRequestId,
       'otp': otp,
       if (passengerId != null) 'passenger_id': passengerId,
+      if (cancelReason != null) 'cancel_reason': cancelReason,
+      if (status != null) 'status': status,
     });
     print('📝 Request Body: $body');
     final response = await _client.post(url, headers: headers, body: body).timeout(

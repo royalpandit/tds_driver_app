@@ -3,10 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:traveldesk_driver/core/utils/string_utils.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../providers/driver_provider.dart';
 import '../../../data/services/google_maps_service.dart';
+import 'trip_tracking_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   final int tripId;
@@ -55,7 +58,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     final rideRequest = provider.tripDetails!.rideRequest;
 
     // Get pickup coordinates
-    if (rideRequest.pickupLat != null && rideRequest.pickupLng != null) {
+    if (rideRequest.pickupLat != null && rideRequest.pickupLng != null &&
+        rideRequest.pickupLat != 0.0 && rideRequest.pickupLng != 0.0) {
       _pickupLatLng = LatLng(rideRequest.pickupLat!, rideRequest.pickupLng!);
     } else if (rideRequest.pickupAddress.isNotEmpty) {
       _pickupLatLng = await _mapsService.getCoordinatesFromAddress(
@@ -64,7 +68,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
 
     // Get drop coordinates
-    if (rideRequest.dropLat != null && rideRequest.dropLng != null) {
+    if (rideRequest.dropLat != null && rideRequest.dropLng != null &&
+        rideRequest.dropLat != 0.0 && rideRequest.dropLng != 0.0) {
       _dropLatLng = LatLng(rideRequest.dropLat!, rideRequest.dropLng!);
     } else if (rideRequest.dropAddress.isNotEmpty) {
       _dropLatLng = await _mapsService.getCoordinatesFromAddress(
@@ -72,9 +77,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       );
     }
 
-    // Fallback to default coordinates if geocoding fails
-    _pickupLatLng ??= const LatLng(23.0225, 72.5714); // Gandhinagar
-    _dropLatLng ??= const LatLng(22.9916, 72.4927); // Ahmedabad
+    // Fallback: use India center if geocoding fails
+    _pickupLatLng ??= const LatLng(20.5937, 78.9629);
+    _dropLatLng ??= const LatLng(20.5937, 78.9629);
     print("Pickup LAT LNG => $_pickupLatLng");
     print("Drop LAT LNG => $_dropLatLng");
     // Draw markers and route after loading coordinates
@@ -128,6 +133,34 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                 _buildPassengerList(details, details.trip.status),
                 const SizedBox(height: 16),
                 _buildTripInfo(details),
+                // Show Map button for running/started trips
+                if (details.trip.status.toLowerCase() == 'running' ||
+                    details.trip.status.toLowerCase() == 'in_progress' ||
+                    details.trip.status.toLowerCase() == 'started') ...[                  
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _navigateToMap(details),
+                      icon: const Icon(Icons.map),
+                      label: Text(
+                        'Show Map',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           );
@@ -218,28 +251,27 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _infoRow("Request Type", ride.requestType),
-          _infoRow("Trip Category", ride.tripCategory),
-          _infoRow("Trip Type", details.trip.tripType.isEmpty ? 'Normal' : details.trip.tripType),
+          _infoRow("Request Type", StringUtils.formatRequestType(ride.requestType)),
+          _infoRow("Trip Category", StringUtils.toTitleCase(ride.tripCategory)),
 
-          _infoRow("Pickup", ride.pickupAddress),
-          _infoRow("Drop", ride.dropAddress),
+          _infoRow("Pickup", StringUtils.toTitleCase(ride.pickupAddress)),
+          _infoRow("Drop", StringUtils.toTitleCase(ride.dropAddress)),
 
-          _infoRow("Date", ride.rideDate),
+          _infoRow("Date", app_date_utils.AppDateUtils.formatDate(ride.rideDate)),
           _infoRow("Time", ride.rideTime),
 
           _infoRow("Estimated KM", "${ride.estimatedKm} km"),
           _infoRow("Estimated Minutes", "${ride.estimatedMins} mins"),
 
-          _infoRow("Status", details.trip.status),
+          _infoRow("Status", StringUtils.toTitleCase(details.trip.status)),
 
           const Divider(height: 25),
 
-          _infoRow("Vehicle", details.trip.vehicle.model),
-          _infoRow("Driver", details.trip.driver.name),
+          _infoRow("Vehicle", StringUtils.toTitleCase(details.trip.vehicle.model)),
+          _infoRow("Driver", StringUtils.toTitleCase(details.trip.driver.name)),
           const SizedBox(height: 12),
           // Show download invoice button only if request type is not roster_auto or corporate
-          if (ride.requestType != 'roster_auto' && ride.requestType != 'corporate')
+          if (ride.requestType != 'roster_auto' && ride.requestType != 'corporate' && details.trip.status.toLowerCase() == 'completed')
             Row(
               children: [
                 Expanded(
@@ -446,7 +478,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
   Widget _passengerRow(PassengerModel passenger, String tripStatus) {
     final showActions =
-        passenger.status.toLowerCase() == 'waiting';
+        passenger.status.toLowerCase() == 'waiting' && tripStatus.toLowerCase() != 'completed';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -458,64 +490,73 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Passenger name and status
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              /// LEFT SIDE
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    passenger.name,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    passenger.status,
-                    style: GoogleFonts.poppins(color: Colors.grey),
-                  ),
-                ],
-              ),
-
-              /// RIGHT SIDE BUTTONS
-              if (showActions)
-                Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 80,
-                      child: ElevatedButton(
-                        onPressed: () => _showOtpDialog(passenger.id),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                        child: const Text("Verify"),
-                      ),
+                    Text(
+                      StringUtils.toTitleCase(passenger.name),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                     ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 80,
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                        child: const Text("Cancel"),
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      StringUtils.toTitleCase(passenger.status),
+                      style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
                     ),
                   ],
                 ),
+              ),
             ],
           ),
+
+          // Action buttons below
+          if (showActions) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: ElevatedButton(
+                      onPressed: () => _showOtpDialog(passenger.id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        textStyle: const TextStyle(fontSize: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text("Verify", style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: OutlinedButton(
+                      onPressed: () => _showCancelPassengerDialog(passenger.id),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        textStyle: const TextStyle(fontSize: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text("Cancel"),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -617,6 +658,163 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         );
       }
     }
+  }
+
+  // ================= CANCEL PASSENGER =================
+
+  void _showCancelPassengerDialog(int passengerId) {
+    final reasonController = TextEditingController();
+    final otpController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Cancel Passenger"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: reasonController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: "Enter cancellation reason",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  hintText: "Enter 6 digit OTP",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Back"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final reason = reasonController.text.trim();
+                final otp = otpController.text.trim();
+                if (reason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a cancellation reason',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                if (otp.isEmpty || otp.length != 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Please enter a valid 6-digit OTP',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                _cancelPassenger(passengerId, reason, otp);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text("Cancel Passenger"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _cancelPassenger(int passengerId, String reason, String otp) async {
+    final provider = Provider.of<DriverProvider>(context, listen: false);
+
+    if (provider.tripDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Trip details not available",
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final result = await provider.verifyOtp(
+        widget.tripId,
+        otp,
+        passengerId: passengerId,
+        rideRequestId: provider.tripDetails!.rideRequest.id,
+        cancelReason: reason,
+        status: 'cancelled',
+      );
+
+      if (result != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Passenger cancelled successfully",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await provider.getTripDetails(widget.tripId, forceRefresh: true);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.errorMessage ?? "Cancellation failed",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Error: ${e.toString()}",
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ================= NAVIGATE TO MAP =================
+
+  void _navigateToMap(TripDetailsResponseModel details) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TripTrackingScreen(
+          tripId: widget.tripId,
+          tripDetails: details,
+        ),
+      ),
+    );
   }
 
   // ================= COMMON =================

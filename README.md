@@ -1,7 +1,7 @@
 # 🚖 TravelDesk Solutions - Complete Cab Booking Platform
 
 <div align="center">
-  <img src="assets/New/Group 9757 (2).png" alt="TravelDesk Solutions Logo" width="150"/>
+  <img src="assets/New/Group 9757.png" alt="TravelDesk Solutions Logo" width="150"/>
   
   ### 🚗 Your Trusted Partner for Comfortable and Reliable Rides
   

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../widgets/floating_bottom_nav.dart' as floating_nav;
 import '../../../core/constants/app_colors.dart' as app_colors;
 import '../../../core/utils/date_utils.dart' as app_date_utils;
+import '../../../core/utils/string_utils.dart';
 import '../../../data/models/trip_model.dart';
 import '../../../presentation/widgets/trip_card.dart';
 import 'all_trips_screen.dart' as all_trips;
@@ -24,7 +25,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   // Toggle for Driver Online/Offline status
-  bool isOnline = true; 
+  bool isOnline = true;
+  final ScrollController _pendingScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _pendingScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -105,20 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       
                       const SizedBox(height: 25),
 
-                      // --- Pending Requests ---
-                      _buildSectionTitle("Pending Requests"),
-                      const SizedBox(height: 15),
-                      _buildPendingRequests(),
-                      
-                      const SizedBox(height: 25),
-
-                      // // --- Fuel History ---
-                      // _buildSectionTitle('Fuel History'),
-                      // const SizedBox(height: 10),
-                      // _buildFuelHistorySection(),
-                      
-                      // const SizedBox(height: 25),
-
                       // --- Ongoing Trip (only show if there are running trips) ---
                       Consumer<driver_provider.DriverProvider>(
                         builder: (context, provider, child) {
@@ -142,6 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           return const SizedBox.shrink();
                         },
                       ),
+
+                      // --- Pending Requests ---
+                      _buildSectionTitle("Pending Requests"),
+                      const SizedBox(height: 15),
+                      _buildPendingRequests(),
+                      
+                      const SizedBox(height: 25),
 
                       // --- Recent Trips ---
                       _buildSectionTitle("Recent Trips"),
@@ -394,8 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         // prefer company name when available (corporate booking)
                         request.rideRequest.corporate?.name.isNotEmpty == true
-                            ? request.rideRequest.corporate!.name
-                            : (request.rideRequest.customer?.name ?? 'Unknown Passenger'),
+                            ? StringUtils.toTitleCase(request.rideRequest.corporate!.name)
+                            : StringUtils.toTitleCase(request.rideRequest.customer?.name ?? 'Unknown Passenger'),
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -912,17 +913,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
 
-        // Navigate to trip tracking screen
-        if (tripDetails != null) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TripTrackingScreen(
-                tripId: tripId,
-                tripDetails: tripDetails,
-              ),
+        // Navigate to trip details screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TripDetailsScreen(
+              tripId: tripId,
             ),
-          );
-        }
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -1193,21 +1191,47 @@ class _HomeScreenState extends State<HomeScreen> {
         final screenWidth = MediaQuery.of(context).size.width;
         final cardWidth = (screenWidth - 52).clamp(280.0, 370.0); // 52 = 20 left + 20 right + 12 margin
 
-        return SizedBox(
-          height: 270,
-          child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.zero,
-              itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
-              itemBuilder: (context, index) {
-                final request = pendingRequests[index];
-                return Container(
-                  width: cardWidth,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: _buildRideRequestCard(request),
-                );
-              },
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 270,
+              child: Scrollbar(
+                controller: _pendingScrollController,
+                thumbVisibility: true,
+                thickness: 4,
+                radius: const Radius.circular(10),
+                child: ListView.builder(
+                  controller: _pendingScrollController,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  itemCount: pendingRequests.length > 5 ? 5 : pendingRequests.length,
+                  itemBuilder: (context, index) {
+                    final request = pendingRequests[index];
+                    return Container(
+                      width: cardWidth,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: _buildRideRequestCard(request),
+                    );
+                  },
+                ),
+              ),
+            ),
+            if (pendingRequests.length > 1)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Swipe to see more →',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         );
 
         // return Column(

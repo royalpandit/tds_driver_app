@@ -44,6 +44,7 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   bool _isLoading = true;
   final List<LatLng> _traveledPath = []; // Track where driver has been
   bool _hasReachedPickup = false; // Track if driver reached pickup
+  bool _isTripRunning = false; // Track if trip status is running
 
   // Location tracking
   Timer? _locationUpdateTimer;
@@ -52,6 +53,12 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   @override
   void initState() {
     super.initState();
+    // Check if trip is already running (started)
+    final tripStatus = widget.tripDetails.trip.status.toLowerCase();
+    if (tripStatus == 'running' || tripStatus == 'started' || tripStatus == 'in_progress') {
+      _isTripRunning = true;
+      _hasReachedPickup = true; // Skip pickup phase if trip already started
+    }
     _initializeMap();
   }
 
@@ -69,28 +76,30 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
     // Get pickup and drop locations from trip details
     final rideRequest = widget.tripDetails.rideRequest;
     
-    // If lat/lng are available, use them; otherwise geocode the addresses
-    if (rideRequest.pickupLat != null && rideRequest.pickupLng != null) {
+    // If lat/lng are available and valid (not 0.0), use them; otherwise geocode the addresses
+    if (rideRequest.pickupLat != null && rideRequest.pickupLng != null &&
+        rideRequest.pickupLat != 0.0 && rideRequest.pickupLng != 0.0) {
       _pickupLocation = LatLng(rideRequest.pickupLat!, rideRequest.pickupLng!);
-    } else {
+    } else if (rideRequest.pickupAddress.isNotEmpty) {
       // Geocode pickup address
       _pickupLocation = await _mapsService.getCoordinatesFromAddress(
         rideRequest.pickupAddress,
       );
     }
 
-    if (rideRequest.dropLat != null && rideRequest.dropLng != null) {
+    if (rideRequest.dropLat != null && rideRequest.dropLng != null &&
+        rideRequest.dropLat != 0.0 && rideRequest.dropLng != 0.0) {
       _dropLocation = LatLng(rideRequest.dropLat!, rideRequest.dropLng!);
-    } else {
+    } else if (rideRequest.dropAddress.isNotEmpty) {
       // Geocode drop address
       _dropLocation = await _mapsService.getCoordinatesFromAddress(
         rideRequest.dropAddress,
       );
     }
 
-    // Fallback to default coordinates if geocoding fails
-    _pickupLocation ??= const LatLng(23.0225, 72.5714); // Gandhinagar
-    _dropLocation ??= const LatLng(22.9916, 72.4927); // Ahmedabad
+    // Fallback: use current location if available, otherwise use India center
+    _pickupLocation ??= const LatLng(20.5937, 78.9629);
+    _dropLocation ??= const LatLng(20.5937, 78.9629);
 
     // Get current location
     await _getCurrentLocation();
@@ -134,9 +143,9 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
           _currentLocation = _pickupLocation;
         });
       } else {
-        // Default to Gandhinagar if no pickup
+        // Default to India center if no pickup
         setState(() {
-          _currentLocation = const LatLng(23.0225, 72.5714);
+          _currentLocation = const LatLng(20.5937, 78.9629);
         });
       }
     }
@@ -335,6 +344,9 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
     }
   }
 
+  // Track when we last did a full route recalculation
+  DateTime _lastRouteUpdate = DateTime.now();
+
   void _startLocationTracking() {
     // Update location every 10 seconds
     _locationUpdateTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
@@ -387,13 +399,34 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
         }
       }
 
+      // Update driver marker position immediately (no API call)
+      _updateDriverMarker(newLocation);
+
       setState(() {
         _currentLocation = newLocation;
       });
 
-      // Update route with new location
-      _drawRouteAndMarkers();
+      // Only recalculate full route every 30 seconds to avoid excessive API calls
+      final now = DateTime.now();
+      if (now.difference(_lastRouteUpdate).inSeconds >= 30) {
+        _lastRouteUpdate = now;
+        _drawRouteAndMarkers();
+      }
     });
+  }
+
+  /// Update only the driver marker position without recalculating the route
+  void _updateDriverMarker(LatLng newLocation) {
+    _markers.removeWhere((m) => m.markerId == const MarkerId('current_location'));
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('current_location'),
+        position: newLocation,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        infoWindow: const InfoWindow(title: 'Your Location', snippet: 'Current position'),
+        anchor: const Offset(0.5, 0.5),
+      ),
+    );
   }
 
   Future<void> _updateCurrentLocationOnServer() async {
@@ -446,18 +479,7 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading
-          ? Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1C5479), Color(0xFF2E8BC0), Color(0xFF4A90E2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-            )
-          : Container(
+      body: Container(
               width: double.infinity,
               height: double.infinity,
               decoration: const BoxDecoration(
@@ -656,22 +678,33 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(20),
-                                  child: GoogleMap(
-                                    initialCameraPosition: CameraPosition(
-                                      target: _currentLocation ?? const LatLng(23.0225, 72.5714),
-                                      zoom: 14,
-                                    ),
-                                    onMapCreated: (controller) {
-                                      if (!mounted) return;
-                                      _mapController = controller;
-                                      _fitBoundsToMarkers();
-                                    },
-                                    markers: _markers,
-                                    polylines: _polylines,
-                                    myLocationEnabled: true,
-                                    myLocationButtonEnabled: false,
-                                    zoomControlsEnabled: false,
-                                    mapType: MapType.normal,
+                                  child: Stack(
+                                    children: [
+                                      GoogleMap(
+                                        initialCameraPosition: CameraPosition(
+                                          target: _currentLocation ?? _pickupLocation ?? const LatLng(20.5937, 78.9629),
+                                          zoom: 14,
+                                        ),
+                                        onMapCreated: (controller) {
+                                          if (!mounted) return;
+                                          _mapController = controller;
+                                          _fitBoundsToMarkers();
+                                        },
+                                        markers: _markers,
+                                        polylines: _polylines,
+                                        myLocationEnabled: true,
+                                        myLocationButtonEnabled: false,
+                                        zoomControlsEnabled: false,
+                                        mapType: MapType.normal,
+                                      ),
+                                      if (_isLoading)
+                                        Container(
+                                          color: Colors.white.withValues(alpha: 0.6),
+                                          child: const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -685,7 +718,7 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
                               children: [
-                                if (!_hasReachedPickup) ...[
+                                if (!_hasReachedPickup && !_isTripRunning) ...[
                                   Expanded(
                                     flex: 2,
                                     child: ElevatedButton(
