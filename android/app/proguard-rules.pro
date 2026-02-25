@@ -1,6 +1,4 @@
-# Keep Mappls SDK classes and Google Play services used by Mappls
--keep class com.mappls.** { *; }
--keepclassmembers class com.mappls.** { *; }
+# Keep Google Play services
 -keep class com.google.android.gms.** { *; }
 -keepclassmembers class com.google.android.gms.** { *; }
 
@@ -10,7 +8,6 @@
 
 # Prevent removal of Flutter plugin registration classes
 -keep class io.flutter.plugins.** { *; }
--keep class com.mappls.sdk.maps.flutter.** { *; }
 
 # Firebase optimizations
 -keep class com.google.firebase.** { *; }

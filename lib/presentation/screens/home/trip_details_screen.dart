@@ -487,11 +487,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   Widget _passengerRow(PassengerModel passenger, String tripStatus) {
- //   final showActions = tripStatus.toLowerCase() == 'running';
     final showActions =
         passenger.status.toLowerCase() == 'waiting';
-
-    //  FINAL LOGIC
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -524,82 +521,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
               /// RIGHT SIDE BUTTONS
               if (showActions)
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 80,
-                      child: ElevatedButton(
-                        onPressed: () => _showOtpDialog(passenger.id),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                        child: const Text("Verify"),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 80,
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          textStyle: const TextStyle(fontSize: 12),
-                        ),
-                        child: const Text("Cancel"),
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _passengerRowq(PassengerModel passenger, String tripStatus) {
-    final isActiveTrip =
-        tripStatus.toLowerCase() == 'running' ||
-        tripStatus.toLowerCase() == 'in_progress' ||
-        tripStatus.toLowerCase() == 'started';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    passenger.name,
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    passenger.status,
-                    style: GoogleFonts.poppins(color: Colors.grey),
-                  ),
-                ],
-              ),
-              if (isActiveTrip)
                 Row(
                   children: [
                     SizedBox(
@@ -713,7 +634,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         );
 
         // 🔄 Refresh trip details to update passenger status
-        provider.getTripDetails(widget.tripId);
+        await provider.getTripDetails(widget.tripId, forceRefresh: true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

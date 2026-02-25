@@ -449,9 +449,9 @@ class DriverProvider with ChangeNotifier {
   // Last fetched single response for convenience (mostly used by details screen)
   TripDetailsResponseModel? tripDetails;
 
-  Future<TripDetailsResponseModel?> getTripDetails(int tripId) async {
-    // return cached value if available immediately
-    if (tripDetailsCache.containsKey(tripId)) {
+  Future<TripDetailsResponseModel?> getTripDetails(int tripId, {bool forceRefresh = false}) async {
+    // return cached value if available immediately (skip if forced refresh)
+    if (!forceRefresh && tripDetailsCache.containsKey(tripId)) {
       tripDetails = tripDetailsCache[tripId];
       return tripDetails;
     }
@@ -591,6 +591,8 @@ class DriverProvider with ChangeNotifier {
       );
 
       if (success) {
+        // Invalidate cached trip details so next fetch gets fresh data
+        tripDetailsCache.remove(tripId);
         await fetchTrips();
       }
 
@@ -622,6 +624,11 @@ class DriverProvider with ChangeNotifier {
         passengerId: passengerId,
         rideRequestId: rideRequestId,
       );
+
+      // Invalidate cached trip details so next fetch gets fresh passenger status
+      if (tripId != null) {
+        tripDetailsCache.remove(tripId);
+      }
 
       _isLoading = false;
       notifyListeners();
