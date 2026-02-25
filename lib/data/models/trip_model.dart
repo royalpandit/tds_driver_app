@@ -148,12 +148,51 @@ class Corporate {
   }
 }
 
+class TripRideRequest {
+  final int id;
+  final String pickupAddress;
+  final double pickupLat;
+  final double pickupLng;
+  final String dropAddress;
+  final double dropLat;
+  final double dropLng;
+  final String rideDate;
+  final String rideTime;
+
+  TripRideRequest({
+    required this.id,
+    required this.pickupAddress,
+    required this.pickupLat,
+    required this.pickupLng,
+    required this.dropAddress,
+    required this.dropLat,
+    required this.dropLng,
+    required this.rideDate,
+    required this.rideTime,
+  });
+
+  factory TripRideRequest.fromJson(Map<String, dynamic> json) {
+    return TripRideRequest(
+      id: json['id'] ?? 0,
+      pickupAddress: json['pickup_address'] ?? '',
+      pickupLat: double.tryParse(json['pickup_lat'].toString()) ?? 0.0,
+      pickupLng: double.tryParse(json['pickup_lng'].toString()) ?? 0.0,
+      dropAddress: json['drop_address'] ?? '',
+      dropLat: double.tryParse(json['drop_lat'].toString()) ?? 0.0,
+      dropLng: double.tryParse(json['drop_lng'].toString()) ?? 0.0,
+      rideDate: json['ride_date'] ?? '',
+      rideTime: json['ride_time'] ?? '',
+    );
+  }
+}
+
 class Trip {
   final int id;
   final String tripDate;
   final String tripType;
   final String status;
   final String requestType;
+  final TripRideRequest? rideRequest;
   final TripRoutes routes;
   final Vehicle vehicle;
   final DriverSummary driver;
@@ -165,6 +204,7 @@ class Trip {
     required this.tripType,
     required this.status,
     required this.requestType,
+    this.rideRequest,
     required this.routes,
     required this.vehicle,
     required this.driver,
@@ -178,6 +218,9 @@ class Trip {
       tripType: json['trip_type'] ?? '',
       status: json['status'] ?? '',
       requestType: json['request_type'] ?? '',
+      rideRequest: json['rideRequest'] != null
+          ? TripRideRequest.fromJson(json['rideRequest'])
+          : null,
       routes: TripRoutes.fromJson(json['routes'] ?? {}),
       vehicle: Vehicle.fromJson(json['vehicle'] ?? {}),
       driver: DriverSummary.fromJson(json['driver'] ?? {}),

@@ -23,10 +23,17 @@ class AllTripsScreen extends StatefulWidget {
 class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProviderStateMixin {
   String _selectedFilter = 'All';
 
-  // track which trip type tab is selected
+  // track which request type tab is selected
   late TabController _tripTypeTabController;
-  final List<String> _tripTypeTabs = ['All', 'Round', 'Normal'];
+  final List<String> _tripTypeTabs = ['All', 'Normal', 'Corporate', 'Roster'];
   String _selectedTripType = 'All';
+
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Date filter
+  DateTime? _filterDate;
 
   @override
   void initState() {
@@ -75,6 +82,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   @override
   void dispose() {
     _tripTypeTabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -96,7 +104,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             // Header
             _buildHeader(),
 
-            // Trip type tabs (All / Round / Normal)
+            // Request type tabs (All / Normal / Corporate / Roster)
             Container(
               color: Colors.white,
               child: TabBar(
@@ -105,6 +113,8 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                 indicatorWeight: 3,
                 labelColor: AppColors.lightPrimary,
                 unselectedLabelColor: Colors.grey,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 labelStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
                 unselectedLabelStyle: GoogleFonts.poppins(fontSize: 14),
                 tabs: _tripTypeTabs.map((t) => Tab(text: t)).toList(),
@@ -115,7 +125,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
               child: Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                 ),
                 child: Consumer<DriverProvider>(
                   builder: (context, driverProvider, child) {
@@ -198,7 +207,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                       );
                     }
 
-                    // Get trips and apply status filter first
+                    // Get trips and apply all filters
                     final trips = driverProvider.trips;
                     var filteredTrips = _selectedFilter == 'All'
                         ? trips
@@ -207,11 +216,35 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                                   (trip.status ?? '').toLowerCase() ==
                                   _selectedFilter.toLowerCase())
                               .toList();
-                    // then apply trip type filter
+                    // then apply request type filter
                     if (_selectedTripType != 'All') {
                       filteredTrips = filteredTrips.where((trip) {
-                        final tt = (trip.tripType ?? '').isEmpty ? 'Normal' : (trip.tripType ?? '');
-                        return tt.toLowerCase() == _selectedTripType.toLowerCase();
+                        final rt = (trip.requestType ?? '').toLowerCase();
+                        if (_selectedTripType == 'Roster') {
+                          return rt == 'roster_auto';
+                        }
+                        return rt == _selectedTripType.toLowerCase();
+                      }).toList();
+                    }
+                    // apply date filter
+                    if (_filterDate != null) {
+                      final fd = '${_filterDate!.year}-${_filterDate!.month.toString().padLeft(2, '0')}-${_filterDate!.day.toString().padLeft(2, '0')}';
+                      filteredTrips = filteredTrips.where((trip) {
+                        return (trip.tripDate ?? '') == fd;
+                      }).toList();
+                    }
+                    // apply search query
+                    if (_searchQuery.isNotEmpty) {
+                      final q = _searchQuery.toLowerCase();
+                      filteredTrips = filteredTrips.where((trip) {
+                        final tripId = trip.id.toString();
+                        final pickup = (trip.rideRequest?.pickupAddress ?? '').toLowerCase();
+                        final drop = (trip.rideRequest?.dropAddress ?? '').toLowerCase();
+                        final passengers = (trip.employeesCount ?? 0).toString();
+                        return tripId.contains(q) ||
+                            pickup.contains(q) ||
+                            drop.contains(q) ||
+                            passengers == q;
                       }).toList();
                     }
 
@@ -360,15 +393,14 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        20,
+        16,
         MediaQuery.of(context).padding.top + 10,
-        20,
-        25,
+        16,
+        16,
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 onPressed: () => Navigator.push(
@@ -377,47 +409,86 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                 ),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+              const SizedBox(width: 4),
+              Text(
+                'All Trips',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              // Active filter indicator
+              if (_selectedFilter != 'All' || _filterDate != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        'assets/New/Group 9757.png',
-                        height: 30,
-                        errorBuilder: (_, __, ___) => const SizedBox(),
-                      ),
-                      const SizedBox(width: 8),
-                      Image.asset(
-                        'assets/New/Group 9756.png',
-                        height: 25,
-                        errorBuilder: (_, __, ___) => const SizedBox(),
+                      const Icon(Icons.filter_alt, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Filtered',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: _showFilterDialog,
-                    icon: const Icon(Icons.tune, color: Colors.white),
-                  ),
-                ],
+                ),
+              IconButton(
+                onPressed: _showFilterDialog,
+                icon: const Icon(Icons.tune, color: Colors.white),
               ),
             ],
           ),
-          const SizedBox(height: 15),
-          Text(
-            'All Trips',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          const SizedBox(height: 12),
+          // Search bar
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
             ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'View and manage your trip history',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.8),
+            child: TextField(
+              controller: _searchController,
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search by pickup, drop, ID, passengers',
+                hintStyle: GoogleFonts.poppins(
+                  color: Colors.grey,
+                  fontSize: 13,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 8),
+                  child: Icon(Icons.search, color: Colors.blue, size: 22),
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 12),
+                          child: Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                        ),
+                      )
+                    : null,
+                suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onChanged: (value) {
+                setState(() => _searchQuery = value.trim());
+              },
             ),
           ),
         ],
@@ -452,7 +523,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       final driverName = trip.driver?.name ?? 'Unknown Driver';
       final vehicleModel = trip.vehicle?.model ?? 'Vehicle';
       final vehiclePlate = trip.vehicle?.numberPlate ?? 'N/A';
-      final tripType = (trip.tripType ?? '').isEmpty ? 'Normal' : trip.tripType;
+      final requestType = (trip.requestType ?? '').isEmpty ? 'Normal' : trip.requestType;
+      final pickupAddress = trip.rideRequest?.pickupAddress ?? 'N/A';
+      final dropAddress = trip.rideRequest?.dropAddress ?? 'N/A';
       final tripDateStr = (trip.tripDate ?? '').isNotEmpty 
         ? app_date_utils.AppDateUtils.formatDate(trip.tripDate)
         : 'No date';
@@ -558,6 +631,53 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                 ),
                 child: Column(
                   children: [
+                    // Pickup location
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Ionicons.location_outline,
+                          size: 16,
+                          color: Colors.green,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            pickupAddress,
+                            style: GoogleFonts.poppins(fontSize: 13),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Drop location
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Ionicons.location_outline,
+                          size: 16,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            dropAddress,
+                            style: GoogleFonts.poppins(fontSize: 13),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Date
                     Row(
                       children: [
                         const Icon(
@@ -568,44 +688,36 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         const SizedBox(width: 8),
                         Text(
                           tripDateStr,
-                          style: GoogleFonts.poppins(),
+                          style: GoogleFonts.poppins(fontSize: 13),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
+                    // Request type badge
                     Row(
                       children: [
                         const Icon(
-                          Ionicons.car_outline,
+                          Ionicons.pricetag_outline,
                           size: 16,
                           color: Colors.grey,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '$vehicleModel - $vehiclePlate',
-                            style: GoogleFonts.poppins(),
-                            overflow: TextOverflow.ellipsis,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getRequestTypeColor(requestType).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        const Icon(
-                          Ionicons.navigate_outline,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          tripType,
-                          style: GoogleFonts.poppins(),
+                          child: Text(
+                            _formatRequestType(requestType),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _getRequestTypeColor(requestType),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -616,6 +728,33 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
               const SizedBox(height: 16),
 
               _buildTripActionButtons(trip),
+
+              // Show invoice button only for normal request type
+              if (requestType.toLowerCase() == 'normal') ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _downloadInvoice(trip.id),
+                    icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                    label: Text(
+                      'Download Invoice',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.lightPrimary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1485,6 +1624,51 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
     }
   }
 
+  void _downloadInvoice(int tripId) async {
+    if (!mounted) return;
+    try {
+      final provider = Provider.of<DriverProvider>(context, listen: false);
+      final result = await provider.downloadInvoice(tripId);
+      if (!mounted) return;
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Unable to download invoice',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Invoice opened: $result',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error downloading invoice: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _callDriver(Trip trip) {
     if (!mounted) return;
     try {
@@ -1576,49 +1760,239 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
   void _showFilterDialog() {
     if (!mounted) return;
+    // Local copies so user can tweak before applying
+    String tempStatusFilter = _selectedFilter;
+    DateTime? tempDate = _filterDate;
+
     try {
       showModalBottomSheet(
         context: context,
+        isScrollControlled: true,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (context) {
-          return Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Select Filter',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                const SizedBox(height: 20),
-                ...['All', 'Completed', 'Planned', 'Cancelled', 'Clear'].map(
-                  (filter) => ListTile(
-                    leading: Icon(
-                      _getFilterIcon(filter),
-                      color: _getFilterColor(filter),
-                    ),
-                    title: Text(filter, style: GoogleFonts.poppins()),
-                    onTap: () {
-                      Navigator.pop(context);
-                      if (mounted) {
-                        setState(() {
-                          if (filter == 'Clear') {
-                            _selectedFilter = 'All';
-                          } else {
-                            _selectedFilter = filter;
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Center(
+                        child: Text(
+                          'Filter Trips',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // --- Status filter ---
+                      Text(
+                        'Status',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: tempStatusFilter != 'All'
+                                ? _getFilterColor(tempStatusFilter)
+                                : Colors.grey.shade300,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: tempStatusFilter != 'All'
+                              ? _getFilterColor(tempStatusFilter).withValues(alpha: 0.05)
+                              : null,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: tempStatusFilter,
+                            isExpanded: true,
+                            icon: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: tempStatusFilter != 'All'
+                                  ? _getFilterColor(tempStatusFilter)
+                                  : Colors.grey,
+                            ),
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                            items: ['All', 'Completed', 'Planned', 'Cancelled'].map((filter) {
+                              return DropdownMenuItem<String>(
+                                value: filter,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _getFilterIcon(filter),
+                                      size: 18,
+                                      color: _getFilterColor(filter),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      filter,
+                                      style: GoogleFonts.poppins(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setModalState(() => tempStatusFilter = value);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // --- Date filter ---
+                      Text(
+                        'Date',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: tempDate ?? DateTime.now(),
+                            firstDate: DateTime(2024),
+                            lastDate: DateTime(2030),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: ColorScheme.light(
+                                    primary: AppColors.lightPrimary,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setModalState(() => tempDate = picked);
                           }
-                        });
-                      }
-                    },
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: tempDate != null ? AppColors.lightPrimary : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                            color: tempDate != null
+                                ? AppColors.lightPrimary.withValues(alpha: 0.05)
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Ionicons.calendar_outline,
+                                size: 20,
+                                color: tempDate != null ? AppColors.lightPrimary : Colors.grey,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  tempDate != null
+                                      ? '${tempDate!.day.toString().padLeft(2, '0')}/${tempDate!.month.toString().padLeft(2, '0')}/${tempDate!.year}'
+                                      : 'Select date',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: tempDate != null ? Colors.black87 : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              if (tempDate != null)
+                                GestureDetector(
+                                  onTap: () => setModalState(() => tempDate = null),
+                                  child: Icon(Icons.close, size: 18, color: Colors.grey[600]),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // --- Apply & Clear buttons ---
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                setState(() {
+                                  _selectedFilter = 'All';
+                                  _filterDate = null;
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey[700],
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: Text(
+                                'Clear All',
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                setState(() {
+                                  _selectedFilter = tempStatusFilter;
+                                  _filterDate = tempDate;
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.lightPrimary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: Text(
+                                'Apply',
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       );
@@ -1661,5 +2035,29 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
     }
   }
 
+  Color _getRequestTypeColor(String requestType) {
+    switch (requestType.toLowerCase()) {
+      case 'normal':
+        return Colors.blue;
+      case 'corporate':
+        return Colors.purple;
+      case 'roster_auto':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
 
+  String _formatRequestType(String requestType) {
+    switch (requestType.toLowerCase()) {
+      case 'normal':
+        return 'Normal';
+      case 'corporate':
+        return 'Corporate';
+      case 'roster_auto':
+        return 'Roster Auto';
+      default:
+        return requestType;
+    }
+  }
 }

@@ -231,7 +231,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           _infoRow("Estimated KM", "${ride.estimatedKm} km"),
           _infoRow("Estimated Minutes", "${ride.estimatedMins} mins"),
 
-          _infoRow("Status", ride.status),
+          _infoRow("Status", details.trip.status),
 
           const Divider(height: 25),
 
