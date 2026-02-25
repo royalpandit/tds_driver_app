@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
@@ -1388,35 +1387,6 @@ class ApiService {
     }
   }
 
-  dynamic _handleResponseq(http.Response response) {
-    print('🔍 _handleResponse called with status: ${response.statusCode}');
-    print('🔍 Response body: ${response.body}');
-    
-    // Handle mock response
-    if (response.body.contains('OTP sent successfully (mock)')) {
-      print('✅ Mock response detected, treating as success');
-      return {'message': 'OTP sent successfully', 'status': 'success'};
-    }
-    
-    try {
-      final body = jsonDecode(response.body);
-      print('🔍 Decoded body: $body');
-      
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('✅ Response successful');
-        return body;
-      } else {
-        print('❌ Response error: ${body['message'] ?? 'Something went wrong'}');
-        throw Exception(body['message'] ?? 'Something went wrong');
-      }
-    } catch (e) {
-      print('❌ Exception in _handleResponse: $e');
-      if (e is FormatException) {
-        throw Exception('Server error: ${response.statusCode} - ${response.body}');
-      }
-      rethrow;
-    }
-  }
   dynamic _handleResponse(http.Response response) {
     print('🔍 StatusCode: ${response.statusCode}');
     print('🔍 Body: ${response.body}');

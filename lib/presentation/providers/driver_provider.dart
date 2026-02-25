@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
@@ -546,7 +546,7 @@ class DriverProvider with ChangeNotifier {
       if (result['type'] == 'file') {
         final bytes = result['bytes'] as List<int>;
         final tempDir = await getTemporaryDirectory();
-        final filePath = '${tempDir.path}/invoice_${tripId}.pdf';
+        final filePath = '${tempDir.path}/invoice_$tripId.pdf';
         final file = File(filePath);
         await file.writeAsBytes(bytes, flush: true);
 

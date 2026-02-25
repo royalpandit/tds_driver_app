@@ -42,7 +42,7 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
   String _durationText = 'Calculating...';
   String _totalDistanceText = '0 km';
   bool _isLoading = true;
-  List<LatLng> _traveledPath = []; // Track where driver has been
+  final List<LatLng> _traveledPath = []; // Track where driver has been
   bool _hasReachedPickup = false; // Track if driver reached pickup
 
   // Location tracking
@@ -164,13 +164,11 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
 
     // Determine next destination based on trip progress
     LatLng nextDestination;
-    String destinationLabel;
     BitmapDescriptor destinationIcon;
     
     if (!_hasReachedPickup) {
       // Driver hasn't reached pickup yet - show route to pickup
       nextDestination = _pickupLocation!;
-      destinationLabel = 'Pickup';
       destinationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
       
       // Add pickup marker
@@ -202,7 +200,6 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
     } else {
       // Driver has reached pickup - show route to drop
       nextDestination = _dropLocation!;
-      destinationLabel = 'Drop';
       destinationIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
       
       // Add drop marker

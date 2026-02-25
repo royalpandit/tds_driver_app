@@ -75,12 +75,12 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: MaterialStateProperty.resolveWith((states) {
+        thumbColor: WidgetStateProperty.resolveWith((states) {
           return AppColors.lightPrimary;
         }),
-        trackColor: MaterialStateProperty.resolveWith((states) {
+        trackColor: WidgetStateProperty.resolveWith((states) {
           // make the track transparent when active, grey when off
-          if (states.contains(MaterialState.selected)) {
+          if (states.contains(WidgetState.selected)) {
             return Colors.transparent;
           }
           return Colors.grey.shade400;
@@ -167,11 +167,11 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: MaterialStateProperty.resolveWith((states) {
+        thumbColor: WidgetStateProperty.resolveWith((states) {
           return AppColors.lightPrimary;
         }),
-        trackColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return Colors.transparent;
           }
           return Colors.grey.shade700;

@@ -254,23 +254,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                           details.trip.id,
                         );
                         if (result == null) {
-                          if (mounted)
+                          if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Unable to download invoice'),
                               ),
                             );
+                          }
                         } else {
-                          if (mounted)
+                          if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Invoice opened: $result')),
                             );
+                          }
                         }
                       } catch (e) {
-                        if (mounted)
+                        if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Error: ${e.toString()}')),
                           );
+                        }
                       }
                     },
                     icon: const Icon(Icons.download),
@@ -373,58 +376,13 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     print("Markers count => ${_markers.length}");
   }
 
-  Widget _buildMapSection(TripDetailsResponseModel details) {
-    if (_isMapLoading || _pickupLatLng == null || _dropLatLng == null) {
-      return Container(
-        height: 260,
-        width: double.infinity,
-        decoration: _cardDecoration(),
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return Container(
-      height: 260,
-      width: double.infinity,
-      decoration: _cardDecoration(),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: _pickupLatLng!,
-            zoom: 12,
-          ),
-          onMapCreated: (controller) {
-            if (!mounted) return;
-            _mapController = controller;
-            //  _fitBoundsToMarkers();
-            Future.delayed(const Duration(milliseconds: 300), () {
-              _fitBoundsToMarkers();
-            });
-          },
-         // markers: _markers,
-          markers: {
-            Marker(
-              markerId: MarkerId("test"),
-              position: LatLng(23.0225, 72.5714),
-            )
-          },
-          polylines: _polylines,
-          myLocationEnabled: true,
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          mapType: MapType.hybrid,
-        ),
-      ),
-    );
-  }
-
   void _fitBoundsToMarkers() {
     if (!mounted ||
         _mapController == null ||
         _pickupLatLng == null ||
-        _dropLatLng == null)
+        _dropLatLng == null) {
       return;
+    }
 
     final bounds = LatLngBounds(
       southwest: LatLng(
@@ -669,7 +627,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha: 0.05),
           blurRadius: 10,
           offset: const Offset(0, 5),
         ),

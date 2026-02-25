@@ -195,7 +195,7 @@ class GoogleMapsService {
     final minutes = (seconds % 3600) ~/ 60;
     
     if (hours > 0) {
-      return '$hours hr ${minutes} min';
+      return '$hours hr $minutes min';
     } else {
       return '$minutes min';
     }

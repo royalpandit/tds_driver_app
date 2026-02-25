@@ -123,9 +123,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Consumer<driver_provider.DriverProvider>(
                         builder: (context, provider, child) {
                           final runningTrips = provider.trips.where((trip) => 
-                            (trip.status ?? '').toLowerCase() == 'running' || 
-                            (trip.status ?? '').toLowerCase() == 'in_progress' || 
-                            (trip.status ?? '').toLowerCase() == 'started'
+                            trip.status.toLowerCase() == 'running' || 
+                            trip.status.toLowerCase() == 'in_progress' || 
+                            trip.status.toLowerCase() == 'started'
                           ).toList();
                           
                           if (runningTrips.isNotEmpty) {
@@ -393,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Flexible(
                       child: Text(
                         // prefer company name when available (corporate booking)
-                        request.rideRequest.corporate?.name?.isNotEmpty == true
+                        request.rideRequest.corporate?.name.isNotEmpty == true
                             ? request.rideRequest.corporate!.name
                             : (request.rideRequest.customer?.name ?? 'Unknown Passenger'),
                         style: GoogleFonts.poppins(
@@ -976,121 +976,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showStartOtpDialog(int tripId) {
-    final TextEditingController otpController = TextEditingController();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Enter OTP to Start Trip',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Please enter the 6-digit OTP provided by the client to verify and start the trip.',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
-                ),
-                decoration: InputDecoration(
-                  hintText: '000000',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 24,
-                    color: Colors.grey[300],
-                    letterSpacing: 8,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                  counterText: '',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter OTP';
-                  }
-                  if (value.length != 6) {
-                    return 'OTP must be 6 digits';
-                  }
-                  if (!RegExp(r'^\d{6}$').hasMatch(value)) {
-                    return 'OTP must contain only digits';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final otp = otpController.text.trim();
-                if (otp.length == 6 && RegExp(r'^\d{6}$').hasMatch(otp)) {
-                  Navigator.of(context).pop();
-                  _proceedToStartTrip(tripId, otp);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Please enter a valid 6-digit OTP',
-                        style: GoogleFonts.poppins(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(
-                'Verify & Start',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showCompleteOtpDialog(int tripId) {
     final TextEditingController otpController = TextEditingController();
     showDialog(
@@ -1270,7 +1155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.6),
+                      color: Colors.grey.withValues(alpha: 0.6),
                       shape: BoxShape.circle,
                     ),
                   );
@@ -1427,7 +1312,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${trip.driver?.name?? 'Unknown Driver'} • ${trip.employeesCount ?? 0} passengers',
+                  '${trip.driver.name} • ${trip.employeesCount} passengers',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.grey[700],
@@ -1498,9 +1383,9 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Filter for completed trips and sort by date descending
         final completedTrips = trips
-            .where((trip) => (trip.status ?? '').toLowerCase() == 'completed')
+            .where((trip) => trip.status.toLowerCase() == 'completed')
             .toList();
-        completedTrips.sort((a, b) => (b.tripDate ?? '').compareTo(a.tripDate ?? ''));
+        completedTrips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
         
         if (completedTrips.isEmpty) {
           return Container(

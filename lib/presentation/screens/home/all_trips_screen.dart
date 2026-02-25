@@ -8,7 +8,6 @@ import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../../data/models/trip_model.dart';
-import '../../../data/models/trip_details_response_model.dart';
 import '../../providers/driver_provider.dart';
 import 'home_screen.dart';
 import 'trip_tracking_screen.dart';
@@ -213,13 +212,13 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         ? trips
                         : trips
                               .where((trip) =>
-                                  (trip.status ?? '').toLowerCase() ==
+                                  trip.status.toLowerCase() ==
                                   _selectedFilter.toLowerCase())
                               .toList();
                     // then apply request type filter
                     if (_selectedTripType != 'All') {
                       filteredTrips = filteredTrips.where((trip) {
-                        final rt = (trip.requestType ?? '').toLowerCase();
+                        final rt = trip.requestType.toLowerCase();
                         if (_selectedTripType == 'Roster') {
                           return rt == 'roster_auto';
                         }
@@ -230,7 +229,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                     if (_filterDate != null) {
                       final fd = '${_filterDate!.year}-${_filterDate!.month.toString().padLeft(2, '0')}-${_filterDate!.day.toString().padLeft(2, '0')}';
                       filteredTrips = filteredTrips.where((trip) {
-                        return (trip.tripDate ?? '') == fd;
+                        return trip.tripDate == fd;
                       }).toList();
                     }
                     // apply search query
@@ -240,7 +239,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         final tripId = trip.id.toString();
                         final pickup = (trip.rideRequest?.pickupAddress ?? '').toLowerCase();
                         final drop = (trip.rideRequest?.dropAddress ?? '').toLowerCase();
-                        final passengers = (trip.employeesCount ?? 0).toString();
+                        final passengers = trip.employeesCount.toString();
                         return tripId.contains(q) ||
                             pickup.contains(q) ||
                             drop.contains(q) ||
@@ -520,13 +519,11 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
           statusIcon = Ionicons.time_outline;
       }
 
-      final driverName = trip.driver?.name ?? 'Unknown Driver';
-      final vehicleModel = trip.vehicle?.model ?? 'Vehicle';
-      final vehiclePlate = trip.vehicle?.numberPlate ?? 'N/A';
-      final requestType = (trip.requestType ?? '').isEmpty ? 'Normal' : trip.requestType;
+      final driverName = trip.driver.name;
+      final requestType = trip.requestType.isEmpty ? 'Normal' : trip.requestType;
       final pickupAddress = trip.rideRequest?.pickupAddress ?? 'N/A';
       final dropAddress = trip.rideRequest?.dropAddress ?? 'N/A';
-      final tripDateStr = (trip.tripDate ?? '').isNotEmpty 
+      final tripDateStr = trip.tripDate.isNotEmpty 
         ? app_date_utils.AppDateUtils.formatDate(trip.tripDate)
         : 'No date';
 
@@ -592,7 +589,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         Icon(statusIcon, size: 16, color: statusColor),
                         const SizedBox(width: 6),
                         Text(
-                          trip.status ?? 'Unknown',
+                          trip.status.isEmpty ? 'Unknown' : trip.status,
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -613,7 +610,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '$driverName • ${trip.employeesCount ?? 0} passengers',
+                      '$driverName • ${trip.employeesCount} passengers',
                       style: GoogleFonts.poppins(color: Colors.grey[700]),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -787,7 +784,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
   Widget _buildTripActionButtons(Trip trip) {
     try {
-      final status = (trip.status ?? '').toLowerCase();
+      final status = trip.status.toLowerCase();
 
       if (status == 'planned' || status == 'confirmed') {
       // Show Cancel on left, Call, Map, and Start Now on right for planned trips
