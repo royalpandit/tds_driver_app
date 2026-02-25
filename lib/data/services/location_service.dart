@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mappls_gl/mappls_gl.dart';
 import '../../core/constants/api_constants.dart';
 
 class LocationService {

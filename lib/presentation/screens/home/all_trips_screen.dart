@@ -458,7 +458,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             ),
             child: TextField(
               controller: _searchController,
-              style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+              style: GoogleFonts.poppins(color: Colors.black, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search by pickup, drop, ID, passengers',
                 hintStyle: GoogleFonts.poppins(
