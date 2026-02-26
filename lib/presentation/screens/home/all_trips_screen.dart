@@ -1634,8 +1634,169 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       }
     }
   }
-  
   void _showUploadBottomSheet(Trip trip) {
+    if (!mounted) return;
+    final uploads = _tripUploads[trip.id] ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Uploads for Trip #${trip.id}',
+                    style: GoogleFonts.poppins(
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (uploads.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'No uploads yet',
+                        style:
+                        GoogleFonts.poppins(color: Colors.grey[700]),
+                      ),
+                    )
+                  else
+                    ...uploads
+                        .map((f) => ListTile(title: Text(f)))
+                        .toList(),
+
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      /// 📷 CAMERA BUTTON
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            final picker = ImagePicker();
+                            final picked = await picker.pickImage(
+                              source: ImageSource.camera,
+                              imageQuality: 70,
+                            );
+
+                            if (picked != null) {
+                              final file = File(picked.path);
+                              final provider = Provider.of<DriverProvider>(
+                                  context,
+                                  listen: false);
+
+                              final success =
+                              await provider.uploadMultipleImages(
+                                tripId: trip.id,
+                                imageFiles: [file],
+                              );
+
+                              if (success) {
+                                uploads.add(
+                                    file.path.split('/').last);
+                                _tripUploads[trip.id] = uploads;
+
+                                setModalState(() {});
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            provider.errorMessage ??
+                                                'Upload failed')),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Camera'),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      /// 🖼 GALLERY BUTTON
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(8)),
+                          ),
+                          onPressed: () async {
+                            final picker = ImagePicker();
+                            final picked = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 70,
+                            );
+
+                            if (picked != null) {
+                              final file = File(picked.path);
+                              final provider = Provider.of<DriverProvider>(
+                                  context,
+                                  listen: false);
+
+                              final success =
+                              await provider.uploadMultipleImages(
+                                tripId: trip.id,
+                                imageFiles: [file],
+                              );
+
+                              if (success) {
+                                uploads.add(
+                                    file.path.split('/').last);
+                                _tripUploads[trip.id] = uploads;
+
+                                setModalState(() {});
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            provider.errorMessage ??
+                                                'Upload failed')),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          child: const Text('Gallery'),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  void _showUploadBottomSheetq(Trip trip) {
     if (!mounted) return;
     final uploads = _tripUploads[trip.id] ?? [];
 
@@ -1677,7 +1838,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      child: const Text('Close'),
+                      child: const Text('Camera'),
                     ),
                   ),
                   const SizedBox(width: 12),
