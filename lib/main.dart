@@ -31,15 +31,15 @@ void main() async {
       }
     } catch (e) {
       // If Firebase initialization fails, log and continue so app can still run.
-      print('Firebase.initializeApp() failed in main: $e');
+      debugPrint('Firebase.initializeApp() failed in main: $e');
     }
 
     // Ensure any existing Firebase user is signed out, then initialize services
     try {
       await fb.FirebaseAuth.instance.signOut();
-      print('✅ Signed out existing Firebase user at startup');
+      debugPrint('✅ Signed out existing Firebase user at startup');
     } catch (e) {
-      print('⚠️ Error signing out existing Firebase user: $e');
+      debugPrint('⚠️ Error signing out existing Firebase user: $e');
     }
 
     // Initialize Firebase-related services (assumes Firebase has been initialized above)
@@ -47,16 +47,16 @@ void main() async {
     await firebaseService.initializeFirebase().timeout(
       const Duration(seconds: 15),
       onTimeout: () {
-        print('Firebase service initialization timed out, continuing without Firebase messaging');
+        debugPrint('Firebase service initialization timed out, continuing without Firebase messaging');
       },
     ).catchError((e) {
-      print('Firebase service initialization failed: $e, continuing without Firebase messaging');
+      debugPrint('Firebase service initialization failed: $e, continuing without Firebase messaging');
     });
     firebaseService.setNavigatorKey(navigatorKey);
 
     runApp(const MyApp());
   } catch (e) {
-    print('Error in main: $e');
+    debugPrint('Error in main: $e');
     // Fallback: run app without Firebase
     runApp(const MyApp());
   }

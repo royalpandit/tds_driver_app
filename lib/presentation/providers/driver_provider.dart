@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:open_filex/open_filex.dart';
+import 'dart:typed_data';
 class DriverProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
@@ -414,6 +415,82 @@ class DriverProvider with ChangeNotifier {
       } else {
         _errorMessage = errorMsg;
       }
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Upload passenger signature bytes (PNG) for a trip/passenger.
+  /// This saves bytes to a temp file then calls ApiService.uploadTripFile.
+  Future<bool> uploadPassengerSignature({
+    required int tripId,
+    required int passengerId,
+    required Uint8List signaturePngBytes,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/signature_${tripId}_$passengerId.png');
+      await file.writeAsBytes(signaturePngBytes);
+
+      await _apiService.uploadTripFile(
+        tripId: tripId,
+        fieldName: 'signature',
+        file: file,
+        extraFields: {'passenger_id': passengerId.toString()},
+      );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Upload a generic trip file (image/docs). Caller should supply a File.
+  Future<bool> uploadTripFile({
+    required int tripId,
+    required File file,
+    String fieldName = 'file',
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _apiService.uploadTripFile(tripId: tripId, fieldName: fieldName, file: file);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Request backend to generate trip document (placeholder).
+  Future<bool> generateTripDocument(int tripId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _apiService.generateTripDocument(tripId);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
       notifyListeners();
       return false;
     }

@@ -25,6 +25,9 @@ class ApiConstants {
   static const String tripDetails = '/api/trip-details/';
   static const String tripUpdateStatus = '/api/trip-update-status';
   static const String tripVerifyOtp = '/api/trip-verify-otp';
+  // Generic endpoints for file upload / document generation (adjust to backend)
+  static const String tripFileUpload = '/api/trips/upload';
+  static const String tripGenerate = '/api/trips/generate';
   
   // Invoice & Booking history
   static const String invoiceDownload = '/api/invoice/download/';

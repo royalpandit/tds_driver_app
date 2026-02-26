@@ -6,6 +6,8 @@ import 'package:traveldesk_driver/presentation/screens/home/trip_details_screen.
 
 import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import 'package:traveldesk_driver/core/utils/string_utils.dart';
 import '../../../data/models/trip_model.dart';
@@ -34,6 +36,8 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
   // Date filter
   DateTime? _filterDate;
+  // Local store for uploaded filenames per trip (replace with real file uploads / API calls)
+  final Map<int, List<String>> _tripUploads = {};
 
   @override
   void initState() {
@@ -48,7 +52,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         }
       });
     } catch (e) {
-      print('Error initializing TabController: $e');
+      debugPrint('Error initializing TabController: $e');
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -63,7 +67,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       final provider = Provider.of<DriverProvider>(context, listen: false);
       await provider.fetchTrips();
     } catch (e) {
-      print('Error loading trips: $e');
+      debugPrint('Error loading trips: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -758,7 +762,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         ),
       );
     } catch (e) {
-      print('⚠️ Error building trip card: $e');
+      debugPrint('⚠️ Error building trip card: $e');
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
@@ -785,136 +789,80 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
   Widget _buildTripActionButtons(Trip trip) {
     try {
-      final status = trip.status.toLowerCase();
+      final status = (trip.status ?? '').toLowerCase();
 
       if (status == 'planned' || status == 'confirmed') {
-      // Show Cancel on left, Call, Map, and Start Now on right for planned trips
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          ElevatedButton(
-            onPressed: () => _cancelTrip(trip.id),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              foregroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ElevatedButton(
+              onPressed: () => _cancelTrip(trip.id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withValues(alpha: 0.1),
+                foregroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text('Cancel', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
             ),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
+                const SizedBox(width: 8),
+                IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
+                const SizedBox(width: 8),
+                IconButton(onPressed: () => _openMap(trip), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
+                const SizedBox(width: 8),
+                ElevatedButton(onPressed: () => _startTrip(trip.id), child: Text('Start', style: GoogleFonts.poppins(fontWeight: FontWeight.w600))),
+              ],
             ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => _openMap(trip),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.green.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _startTrip(trip.id),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child: Text(
-                  'Start Now',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    } else if (status == 'running' ||
-        status == 'in_progress' ||
-        status == 'started') {
-      // While trip is running we want to always show Call and Map so
-      // driver can return to navigation or call passenger. Also show End button.
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Optionally keep a placeholder or left-aligned widget in future
-          const SizedBox.shrink(),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => _openMap(trip),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.green.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _completeTrip(trip.id),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                child: Text(
-                  'End',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    } else if (status == 'completed') {
-      return const SizedBox.shrink();
-    }
+          ],
+        );
+      }
 
-    else {
-      // Default buttons for other statuses
+      if (status == 'running' || status == 'in_progress' || status == 'started') {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const SizedBox.shrink(),
+            Row(
+              children: [
+                IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
+                const SizedBox(width: 8),
+                IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
+                const SizedBox(width: 8),
+                IconButton(onPressed: () => _openMap(trip), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
+                const SizedBox(width: 8),
+                ElevatedButton(onPressed: () => _callDriver(trip), child: Text('Call', style: GoogleFonts.poppins(fontWeight: FontWeight.w600))),
+              ],
+            ),
+          ],
+        );
+      }
+
+      if (status == 'completed') {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
+            const SizedBox(width: 8),
+            IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
+          ],
+        );
+      }
+
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(
-            onPressed: () => _openMap(trip),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.green.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            icon: Icon(Ionicons.map_outline, color: Colors.green, size: 20),
-          ),
+          IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
+          const SizedBox(width: 8),
+          IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
+          const SizedBox(width: 8),
+          IconButton(onPressed: () => _openMap(trip), style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
         ],
       );
-    }
     } catch (e) {
-      print('⚠️ Error building trip action buttons: $e');
+      debugPrint('⚠️ Error building trip action buttons: $e');
       return const SizedBox.shrink();
     }
   }
@@ -1646,7 +1594,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         ),
       );
     } catch (e) {
-      print('Error in _callDriver: $e');
+      debugPrint('Error in _callDriver: $e');
     }
   }
 
@@ -1697,6 +1645,121 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         );
       }
     }
+  }
+  
+  void _showUploadBottomSheet(Trip trip) {
+    if (!mounted) return;
+    final uploads = _tripUploads[trip.id] ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Uploads for Trip #${trip.id}', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              if (uploads.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No uploads yet', style: GoogleFonts.poppins(color: Colors.grey[700])),
+                )
+              else
+                ...uploads.map((f) => ListTile(title: Text(f))).toList(),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Close'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Use image picker to select an image and upload
+                        final picker = ImagePicker();
+                        final picked = await picker.pickImage(source: ImageSource.gallery);
+                        if (picked != null) {
+                          final file = File(picked.path);
+                          final provider = Provider.of<DriverProvider>(context, listen: false);
+                          final success = await provider.uploadTripFile(tripId: trip.id, file: file);
+                          if (success) {
+                            final list = _tripUploads[trip.id] ?? [];
+                            list.add(file.path.split('/').last);
+                            _tripUploads[trip.id] = list;
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(provider.errorMessage ?? 'Upload failed')),
+                              );
+                            }
+                          }
+                        }
+
+                        // Refresh bottom sheet by closing and reopening
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                          Future.delayed(const Duration(milliseconds: 200), () => _showUploadBottomSheet(trip));
+                        }
+                      },
+                      child: const Text('Upload'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showGenerateConfirmation(int tripId) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text('Generate Document', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          content: Text('Do you want to generate the document for trip #$tripId?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('No')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                // Placeholder for API call to generate document (commented):
+                // await Provider.of<DriverProvider>(context, listen: false).generateTripDocument(tripId);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Generate requested (API call commented)')),
+                  );
+                }
+              },
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showFilterDialog() {
@@ -1938,7 +2001,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         },
       );
     } catch (e) {
-      print('Error showing filter dialog: $e');
+      debugPrint('Error showing filter dialog: $e');
     }
   }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/foundation.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_history_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
@@ -94,9 +95,9 @@ class ApiService {
     String? password,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.sendOtp}');
-    print('🌐 TDS API: POST $url (DRIVER OTP SEND)');
+    debugPrint('🌐 TDS API: POST $url (DRIVER OTP SEND)');
     final headers = await _getHeaders();
-    print('📋 Headers: $headers');
+    debugPrint('📋 Headers: $headers');
 
     final Map<String, dynamic> body = {
       'contact': email,
@@ -114,16 +115,16 @@ class ApiService {
     }
 
     final bodyJson = jsonEncode(body);
-    print('📝 Request Body: $bodyJson');
-    print('✅ user_type is correctly set to: "driver"');
-    print('🎯 Purpose: $purpose');
+    debugPrint('📝 Request Body: $bodyJson');
+    debugPrint('✅ user_type is correctly set to: "driver"');
+    debugPrint('🎯 Purpose: $purpose');
 
     // Try with different content types
     final headersWithForm = Map<String, String>.from(headers);
     headersWithForm['Content-Type'] = 'application/x-www-form-urlencoded';
 
     final formData = body.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}').join('&');
-    print('📝 Form Data: $formData');
+    debugPrint('📝 Form Data: $formData');
 
     try {
       // First try with JSON
@@ -136,7 +137,7 @@ class ApiService {
       
       // If JSON fails with 405, try with form data
       if (response.statusCode == 405) {
-        print('🔄 JSON request failed with 405, trying form data...');
+        debugPrint('🔄 JSON request failed with 405, trying form data...');
         response = await _client.post(url, headers: headersWithForm, body: formData).timeout(
           const Duration(seconds: 30),
           onTimeout: () {
@@ -145,11 +146,11 @@ class ApiService {
         );
       }
       
-      print('📊 Response Status: ${response.statusCode}');
-      print('📄 Response Body: ${response.body}');
+      debugPrint('📊 Response Status: ${response.statusCode}');
+      debugPrint('📄 Response Body: ${response.body}');
       return _handleResponse(response);
     } catch (e) {
-      print('❌ Request failed: $e');
+      debugPrint('❌ Request failed: $e');
       rethrow;
     }
   }
@@ -699,6 +700,58 @@ class ApiService {
     final response = await http.Response.fromStream(streamedResponse);
     // print('📊 Response Status: ${response.statusCode}');
     // print('📄 Response Body: ${response.body}');
+    return _handleResponse(response);
+  }
+
+  /// Upload a file related to a trip (signature, images, docs).
+  /// Note: `tripFileUpload` endpoint is a placeholder — adjust path/field names
+  /// to match your backend API.
+  Future<dynamic> uploadTripFile({
+    required int tripId,
+    required String fieldName,
+    File? file,
+    Map<String, String>? extraFields,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripFileUpload}');
+    print('🌐 TDS API: POST $url (TRIP FILE UPLOAD)');
+
+    var request = http.MultipartRequest('POST', url);
+    final token = await _storageService.getToken();
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+
+    request.fields.addAll({
+      'trip_id': tripId.toString(),
+      if (extraFields != null) ...extraFields,
+    });
+
+    if (file != null) {
+      // try to guess mime type from extension; default to jpeg
+      final ext = file.path.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? MediaType('image', 'png') : MediaType('image', 'jpeg');
+      request.files.add(await http.MultipartFile.fromPath(
+        fieldName,
+        file.path,
+        contentType: mimeType,
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
+    return _handleResponse(response);
+  }
+
+  /// Request backend to generate a document for a trip (placeholder endpoint).
+  Future<dynamic> generateTripDocument(int tripId) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripGenerate}');
+    print('🌐 TDS API: POST $url (GENERATE TRIP DOCUMENT)');
+    final headers = await _getHeaders();
+    final body = jsonEncode({'trip_id': tripId});
+    final response = await _client.post(url, headers: headers, body: body);
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
     return _handleResponse(response);
   }
 
@@ -1419,8 +1472,8 @@ class ApiService {
   }
 
   dynamic _handleResponse(http.Response response) {
-    print('🔍 StatusCode: ${response.statusCode}');
-    print('🔍 Body: ${response.body}');
+    debugPrint('🔍 StatusCode: ${response.statusCode}');
+    debugPrint('🔍 Body: ${response.body}');
 
     try {
       final body = jsonDecode(response.body);
@@ -1434,7 +1487,7 @@ class ApiService {
         final message = body['message'] ?? 'Request failed';
         final code = body['code'];
 
-        print('❌ Backend failure: $message (code: $code)');
+        debugPrint('❌ Backend failure: $message (code: $code)');
 
         // ✅ OTP specific handling
         if (code == 422 ||
@@ -1456,7 +1509,7 @@ class ApiService {
       // ----------------------------------
       if ((body.containsKey('success') && body['success'] == true) ||
           (body.containsKey('status') && body['status'] == true)) {
-        print('✅ API success');
+        debugPrint('✅ API success');
         return body;
       }
 
@@ -1464,7 +1517,7 @@ class ApiService {
       // 🟢 Case: code 200
       // ----------------------------------
       if (body.containsKey('code') && body['code'] == 200) {
-        print('✅ API success (code=200)');
+        debugPrint('✅ API success (code=200)');
         return body;
       }
 

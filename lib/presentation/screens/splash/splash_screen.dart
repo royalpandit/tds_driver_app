@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -56,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // Request other permissions
       await Permission.phone.request();
     } catch (e) {
-      print('Error requesting permissions: $e');
+      debugPrint('Error requesting permissions: $e');
     }
   }
 
@@ -84,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       } catch (e) {
         // API call failed, token might be expired
-        print('Authentication validation failed: $e');
+        debugPrint('Authentication validation failed: $e');
       }
       
       // Authentication failed or invalid, clear stored data and go to login

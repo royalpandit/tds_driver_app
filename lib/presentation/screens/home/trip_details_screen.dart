@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:traveldesk_driver/core/utils/string_utils.dart';
+import 'dart:typed_data';
+import 'package:signature/signature.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../providers/driver_provider.dart';
 import '../../../data/services/google_maps_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'trip_tracking_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
@@ -28,13 +31,26 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   bool _isMapLoading = true;
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
+  late SignatureController _signatureController;
+  final List<Uint8List> _uploadedSignatures = [];
 
   @override
   void initState() {
     super.initState();
+    _signatureController = SignatureController(
+      penStrokeWidth: 2,
+      penColor: Colors.black,
+      exportBackgroundColor: Colors.white,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadTripDetails();
     });
+  }
+
+  @override
+  void dispose() {
+    _signatureController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTripDetails() async {
@@ -80,8 +96,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     // Fallback: use India center if geocoding fails
     _pickupLatLng ??= const LatLng(20.5937, 78.9629);
     _dropLatLng ??= const LatLng(20.5937, 78.9629);
-    print("Pickup LAT LNG => $_pickupLatLng");
-    print("Drop LAT LNG => $_dropLatLng");
+    debugPrint("Pickup LAT LNG => $_pickupLatLng");
+    debugPrint("Drop LAT LNG => $_dropLatLng");
     // Draw markers and route after loading coordinates
     if (mounted) {
       await _prepareMapData();
@@ -405,7 +421,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       //   ),
       // );
     }
-    print("Markers count => ${_markers.length}");
+    debugPrint("Markers count => ${_markers.length}");
   }
 
   void _fitBoundsToMarkers() {
@@ -438,7 +454,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     try {
       _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
     } catch (e) {
-      print('Error fitting bounds: $e');
+      debugPrint('Error fitting bounds: $e');
     }
   }
 
@@ -634,6 +650,12 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
 
         // 🔄 Refresh trip details to update passenger status
         await provider.getTripDetails(widget.tripId, forceRefresh: true);
+
+        // Open signature bottom sheet so driver can collect passenger signature
+        // (API upload call is commented out below; replace with real upload)
+        if (mounted) {
+          _showSignatureBottomSheet(passengerId);
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -658,6 +680,115 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         );
       }
     }
+  }
+
+  void _showSignatureBottomSheet(int passengerId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Collect Passenger Signature', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              Container(
+                height: 260,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[100],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Signature(
+                    controller: _signatureController,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _signatureController.clear();
+                      },
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _signatureController.clear();
+                      },
+                      child: const Text('Dismiss'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // export signature as PNG bytes
+                        final data = await _signatureController.toPngBytes();
+                        if (data == null || data.isEmpty) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please provide a signature before submitting')),
+                            );
+                          }
+                          return;
+                        }
+
+                        // Call provider to upload signature
+                        final provider = Provider.of<DriverProvider>(context, listen: false);
+                        final success = await provider.uploadPassengerSignature(
+                          tripId: widget.tripId,
+                          passengerId: passengerId,
+                          signaturePngBytes: data,
+                        );
+
+                        if (success) {
+                          // keep a local copy as well
+                          _uploadedSignatures.add(data);
+                          if (mounted) {
+                            Navigator.of(context).pop();
+                            _signatureController.clear();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Signature uploaded successfully')),
+                            );
+                          }
+                        } else {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(provider.errorMessage ?? 'Upload failed')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Submit'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // ================= CANCEL PASSENGER (NO SHOW - No OTP required) =================

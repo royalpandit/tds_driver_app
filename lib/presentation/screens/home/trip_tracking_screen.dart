@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -855,7 +856,7 @@ class _TripTrackingScreenState extends State<TripTrackingScreen> {
         CameraUpdate.newLatLngZoom(_currentLocation!, 15),
       );
     } catch (e) {
-      print('Error recentering map: $e');
+      debugPrint('Error recentering map: $e');
     }
   }
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/services/firebase_service.dart';
 import '../../data/services/api_service.dart';
@@ -187,7 +188,7 @@ class AuthProvider with ChangeNotifier {
     try {
       await FirebaseAuth.instance.signOut();
     } catch (e) {
-      print('⚠️ Firebase signOut error: $e');
+      debugPrint('⚠️ Firebase signOut error: $e');
     }
 
     await _storageService.clearAllData();
