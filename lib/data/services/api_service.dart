@@ -1395,7 +1395,7 @@ class ApiService {
       final body = jsonDecode(response.body);
 
       // ----------------------------------
-      // 🔴 Case: success OR status false
+      //  Case: success OR status false
       // ----------------------------------
       if ((body.containsKey('success') && body['success'] == false) ||
           (body.containsKey('status') && body['status'] == false)) {
