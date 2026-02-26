@@ -1658,10 +1658,26 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Uploads for Trip #${trip.id}',
-                    style: GoogleFonts.poppins(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                  // Header with title and close button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Uploads for Trip #${trip.id}',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Icon(
+                          Icons.close,
+                          size: 24,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
 
@@ -1710,7 +1726,28 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                                     file.path.split('/').last);
                                 _tripUploads[trip.id] = uploads;
 
+                                // Delete file from cache after successful upload
+                                try {
+                                  await file.delete();
+                                } catch (e) {
+                                  debugPrint('Error deleting file from cache: $e');
+                                }
+
                                 setModalState(() {});
+                                
+                                // Show success message
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Image uploaded successfully',
+                                        style: GoogleFonts.poppins(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
                               } else {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context)
@@ -1767,7 +1804,28 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                                     file.path.split('/').last);
                                 _tripUploads[trip.id] = uploads;
 
+                                // Delete file from cache after successful upload
+                                try {
+                                  await file.delete();
+                                } catch (e) {
+                                  debugPrint('Error deleting file from cache: $e');
+                                }
+
                                 setModalState(() {});
+                                
+                                // Show success message
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Image uploaded successfully',
+                                        style: GoogleFonts.poppins(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
                               } else {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context)
@@ -1794,7 +1852,12 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
           },
         );
       },
-    );
+    ).then((_) {
+      // Clear cache when sheet is closed
+      if (mounted) {
+        _tripUploads.remove(trip.id);
+      }
+    });
   }
   void _showUploadBottomSheetq(Trip trip) {
     if (!mounted) return;
