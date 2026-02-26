@@ -703,17 +703,14 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  /// Upload a file related to a trip (signature, images, docs).
-  /// Note: `tripFileUpload` endpoint is a placeholder — adjust path/field names
-  /// to match your backend API.
-  Future<dynamic> uploadTripFile({
+  /// Upload passenger signature to trip.
+  Future<dynamic> uploadPassengerSignature({
     required int tripId,
-    required String fieldName,
-    File? file,
-    Map<String, String>? extraFields,
+    required int userId,
+    required File signatureFile,
   }) async {
-    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripFileUpload}');
-    print('🌐 TDS API: POST $url (TRIP FILE UPLOAD)');
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.uploadSignature}');
+    print('🌐 TDS API: POST $url (UPLOAD SIGNATURE)');
 
     var request = http.MultipartRequest('POST', url);
     final token = await _storageService.getToken();
@@ -722,16 +719,47 @@ class ApiService {
 
     request.fields.addAll({
       'trip_id': tripId.toString(),
-      if (extraFields != null) ...extraFields,
+      'user_id': userId.toString(),
     });
 
-    if (file != null) {
-      // try to guess mime type from extension; default to jpeg
-      final ext = file.path.split('.').last.toLowerCase();
+    // Detect MIME type from file extension
+    final ext = signatureFile.path.split('.').last.toLowerCase();
+    final mimeType = ext == 'png' ? MediaType('image', 'png') : MediaType('image', 'jpeg');
+    request.files.add(await http.MultipartFile.fromPath(
+      'image',
+      signatureFile.path,
+      contentType: mimeType,
+    ));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
+    return _handleResponse(response);
+  }
+
+  /// Upload multiple images for a trip.
+  Future<dynamic> uploadMultipleImages({
+    required int tripId,
+    required List<File> imageFiles,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.uploadImages}');
+    print('🌐 TDS API: POST $url (UPLOAD MULTIPLE IMAGES)');
+
+    var request = http.MultipartRequest('POST', url);
+    final token = await _storageService.getToken();
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
+
+    request.fields['trip_id'] = tripId.toString();
+
+    // Add all image files
+    for (var imageFile in imageFiles) {
+      final ext = imageFile.path.split('.').last.toLowerCase();
       final mimeType = ext == 'png' ? MediaType('image', 'png') : MediaType('image', 'jpeg');
       request.files.add(await http.MultipartFile.fromPath(
-        fieldName,
-        file.path,
+        'images',
+        imageFile.path,
         contentType: mimeType,
       ));
     }
@@ -1289,6 +1317,7 @@ class ApiService {
     final body = jsonEncode({
       if (tripId != null) 'trip_id': tripId,
       if (rideRequestId != null) 'ride_request_id': rideRequestId,
+      'action': 'picked_up',
       'otp': otp,
       if (passengerId != null) 'passenger_id': passengerId,
       if (cancelReason != null) 'cancel_reason': cancelReason,

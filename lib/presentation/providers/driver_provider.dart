@@ -425,6 +425,7 @@ class DriverProvider with ChangeNotifier {
   Future<bool> uploadPassengerSignature({
     required int tripId,
     required int passengerId,
+    required int userId,
     required Uint8List signaturePngBytes,
   }) async {
     _isLoading = true;
@@ -436,11 +437,10 @@ class DriverProvider with ChangeNotifier {
       final file = File('${tempDir.path}/signature_${tripId}_$passengerId.png');
       await file.writeAsBytes(signaturePngBytes);
 
-      await _apiService.uploadTripFile(
+      await _apiService.uploadPassengerSignature(
         tripId: tripId,
-        fieldName: 'signature',
-        file: file,
-        extraFields: {'passenger_id': passengerId.toString()},
+        userId: userId,
+        signatureFile: file,
       );
 
       _isLoading = false;
@@ -454,18 +454,20 @@ class DriverProvider with ChangeNotifier {
     }
   }
 
-  /// Upload a generic trip file (image/docs). Caller should supply a File.
-  Future<bool> uploadTripFile({
+  /// Upload multiple images for a trip.
+  Future<bool> uploadMultipleImages({
     required int tripId,
-    required File file,
-    String fieldName = 'file',
+    required List<File> imageFiles,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _apiService.uploadTripFile(tripId: tripId, fieldName: fieldName, file: file);
+      await _apiService.uploadMultipleImages(
+        tripId: tripId,
+        imageFiles: imageFiles,
+      );
       _isLoading = false;
       notifyListeners();
       return true;

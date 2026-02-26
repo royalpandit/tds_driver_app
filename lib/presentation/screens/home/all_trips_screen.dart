@@ -807,10 +807,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             ),
             Row(
               children: [
-                IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
-                const SizedBox(width: 8),
-                IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
-                const SizedBox(width: 8),
                 IconButton(onPressed: () => _openMap(trip), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
                 const SizedBox(width: 8),
                 ElevatedButton(onPressed: () => _startTrip(trip.id), child: Text('Start', style: GoogleFonts.poppins(fontWeight: FontWeight.w600))),
@@ -827,13 +823,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
             const SizedBox.shrink(),
             Row(
               children: [
-                IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
-                const SizedBox(width: 8),
-                IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
-                const SizedBox(width: 8),
                 IconButton(onPressed: () => _openMap(trip), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
                 const SizedBox(width: 8),
-                ElevatedButton(onPressed: () => _callDriver(trip), child: Text('Call', style: GoogleFonts.poppins(fontWeight: FontWeight.w600))),
+                ElevatedButton(onPressed: () => _completeTrip(trip.id), child: Text('End', style: GoogleFonts.poppins(fontWeight: FontWeight.w600))),
               ],
             ),
           ],
@@ -854,10 +846,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
-          const SizedBox(width: 8),
-          IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
-          const SizedBox(width: 8),
           IconButton(onPressed: () => _openMap(trip), style: IconButton.styleFrom(backgroundColor: Colors.green.withValues(alpha: 0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: const Icon(Ionicons.map_outline, color: Colors.green, size: 20)),
         ],
       );
@@ -1686,12 +1674,18 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                       onPressed: () {
                         Navigator.of(context).pop();
                       },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       child: const Text('Close'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () async {
                         // Use image picker to select an image and upload
                         final picker = ImagePicker();
@@ -1699,7 +1693,10 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         if (picked != null) {
                           final file = File(picked.path);
                           final provider = Provider.of<DriverProvider>(context, listen: false);
-                          final success = await provider.uploadTripFile(tripId: trip.id, file: file);
+                          final success = await provider.uploadMultipleImages(
+                            tripId: trip.id,
+                            imageFiles: [file],
+                          );
                           if (success) {
                             final list = _tripUploads[trip.id] ?? [];
                             list.add(file.path.split('/').last);

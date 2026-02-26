@@ -33,6 +33,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   final Set<Polyline> _polylines = {};
   late SignatureController _signatureController;
   final List<Uint8List> _uploadedSignatures = [];
+  final Set<int> _passengersWithSignatures = {}; // Track which passengers have signatures
 
   @override
   void initState() {
@@ -495,6 +496,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   Widget _passengerRow(PassengerModel passenger, String tripStatus) {
     final showActions =
         passenger.status.toLowerCase() == 'waiting' && tripStatus.toLowerCase() != 'completed';
+    final isPickedUp = passenger.status.toLowerCase() == 'picked_up' && tripStatus.toLowerCase() != 'completed';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -506,7 +508,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Passenger name and status
+          // Passenger name, status, and signature icon
           Row(
             children: [
               Expanded(
@@ -527,6 +529,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   ],
                 ),
               ),
+              // Signature icon - show only if picked_up and trip not completed
+              if (isPickedUp) ...[
+                if (_passengersWithSignatures.contains(passenger.id))
+                  const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                else
+                  GestureDetector(
+                    onTap: () => _showSignatureBottomSheet(passenger.id),
+                    child: Icon(Icons.edit, color: Colors.orange, size: 24),
+                  ),
+              ]
             ],
           ),
 
@@ -683,6 +695,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   }
 
   void _showSignatureBottomSheet(int passengerId) {
+    // Only show if not already collected
+    if (_passengersWithSignatures.contains(passengerId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Signature already collected for this passenger')),
+      );
+      return;
+    }
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -724,6 +744,9 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       onPressed: () {
                         _signatureController.clear();
                       },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       child: const Text('Clear'),
                     ),
                   ),
@@ -734,12 +757,18 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         Navigator.of(context).pop();
                         _signatureController.clear();
                       },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       child: const Text('Dismiss'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () async {
                         // export signature as PNG bytes
                         final data = await _signatureController.toPngBytes();
@@ -757,12 +786,17 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         final success = await provider.uploadPassengerSignature(
                           tripId: widget.tripId,
                           passengerId: passengerId,
+                          userId: passengerId,
                           signaturePngBytes: data,
                         );
 
                         if (success) {
                           // keep a local copy as well
                           _uploadedSignatures.add(data);
+                          // Mark passenger as having signature
+                          setState(() {
+                            _passengersWithSignatures.add(passengerId);
+                          });
                           if (mounted) {
                             Navigator.of(context).pop();
                             _signatureController.clear();
