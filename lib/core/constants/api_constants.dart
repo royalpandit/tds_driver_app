@@ -32,6 +32,7 @@ class ApiConstants {
   
   // Invoice & Booking history
   static const String invoiceDownload = '/api/invoice/download/';
+  static const String driverInvoiceDownload = '/api/driver-invoice/download/';
   static const String bookingHistory = '/api/ride/booking-history';
 
   // Legacy endpoints (keeping for reference)

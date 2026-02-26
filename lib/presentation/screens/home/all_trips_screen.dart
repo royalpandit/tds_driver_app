@@ -836,9 +836,9 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         return Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Uploads'),
+            IconButton(onPressed: () => _showUploadBottomSheet(trip), icon: const Icon(Ionicons.cloud_upload_outline, color: Colors.blue, size: 20), tooltip: 'Upload Images'),
             const SizedBox(width: 8),
-            IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.sparkles_outline, color: Colors.purple, size: 20), tooltip: 'Generate'),
+            IconButton(onPressed: () => _showGenerateConfirmation(trip.id), icon: const Icon(Ionicons.document_text_outline, color: Colors.purple, size: 20), tooltip: 'Generate Driver Invoice'),
           ],
         );
       }
@@ -1959,20 +1959,70 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          title: Text('Generate Document', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-          content: Text('Do you want to generate the document for trip #$tripId?'),
+          title: Text('Generate Driver Invoice', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          content: Text('Do you want to generate and download the driver invoice for trip #$tripId?'),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('No')),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(ctx).pop();
-                // Placeholder for API call to generate document (commented):
-                // await Provider.of<DriverProvider>(context, listen: false).generateTripDocument(tripId);
-
+                
+                // Show loading indicator
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Generate requested (API call commented)')),
+                    SnackBar(
+                      content: Text(
+                        'Generating driver invoice...',
+                        style: GoogleFonts.poppins(color: Colors.white),
+                      ),
+                      backgroundColor: Colors.blue,
+                      duration: const Duration(seconds: 2),
+                    ),
                   );
+                }
+
+                try {
+                  final provider = Provider.of<DriverProvider>(context, listen: false);
+                  final result = await provider.downloadDriverInvoice(tripId);
+                  
+                  if (!mounted) return;
+                  
+                  if (result == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Unable to generate driver invoice',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Driver invoice generated and opened successfully',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Error generating driver invoice: ${e.toString()}',
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               },
               child: const Text('Yes'),

@@ -647,6 +647,62 @@ class DriverProvider with ChangeNotifier {
       rethrow;
     }
   }
+
+  /// Download driver invoice PDF for a specific trip.
+  /// The invoice is generated, stored in server storage, emailed to driver and super admin,
+  /// and returned as a downloadable PDF file.
+  Future<String?> downloadDriverInvoice(int tripId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _apiService.downloadDriverInvoice(tripId);
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result['type'] == 'redirect') {
+        final url = result['url'] as String;
+        // Try opening external URL (use external application on mobile)
+        try {
+          if (kIsWeb) {
+            await launchUrlString(url, webOnlyWindowName: '_blank');
+          } else {
+            await launchUrlString(url, mode: LaunchMode.externalApplication);
+          }
+        } catch (_) {}
+        return url;
+      }
+
+      if (result['type'] == 'file') {
+        final bytes = result['bytes'] as List<int>;
+        final tempDir = await getTemporaryDirectory();
+        final filePath = '${tempDir.path}/driver_invoice_$tripId.pdf';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes, flush: true);
+
+        // Try open the saved file (best-effort)
+        try {
+          if (!kIsWeb) {
+            await OpenFilex.open(filePath);
+          } else {
+            await launchUrlString(Uri.file(filePath).toString());
+          }
+        } catch (_) {}
+
+        return filePath;
+      }
+
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<bool> updateTripStatus(
       int tripId,
       String status, {

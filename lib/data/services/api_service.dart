@@ -1175,6 +1175,53 @@ class ApiService {
     }
   }
 
+  /// Download driver invoice PDF for a specific trip.
+  /// The invoice is generated, stored in server storage, emailed to driver and super admin,
+  /// and returned as a downloadable PDF file.
+  Future<Map<String, dynamic>> downloadDriverInvoice(int tripId) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.driverInvoiceDownload}$tripId');
+    print('🌐 TDS API: GET $url (DOWNLOAD DRIVER INVOICE)');
+    final headers = await _getHeaders();
+
+    final response = await _client.get(url, headers: headers).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to download driver invoice');
+      },
+    );
+
+    // 302 -> redirect to external invoice URL
+    if (response.statusCode == 302 || (response.statusCode >= 300 && response.statusCode < 400)) {
+      final location = response.headers['location'];
+      if (location != null && location.isNotEmpty) {
+        return {'type': 'redirect', 'url': location};
+      }
+      throw Exception('Redirected but no Location header found');
+    }
+
+    // 200 -> file bytes (PDF)
+    if (response.statusCode == 200) {
+      final contentType = response.headers['content-type'] ?? 'application/pdf';
+      return {
+        'type': 'file',
+        'bytes': response.bodyBytes,
+        'contentType': contentType,
+      };
+    }
+
+    if (response.statusCode == 404) {
+      throw Exception('Trip not found');
+    }
+
+    // Fallback: try to parse error body
+    try {
+      final body = jsonDecode(response.body);
+      throw Exception(body['message'] ?? 'Error generating driver invoice');
+    } catch (_) {
+      throw Exception('Failed to download driver invoice: HTTP ${response.statusCode}');
+    }
+  }
+
   // Future<TripDetails> getTripDetails(int tripId) async {
   //   final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripDetails}$tripId');
   //   // print('🌐 TDS API: GET $url');
