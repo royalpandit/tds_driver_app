@@ -7,6 +7,7 @@ import 'package:traveldesk_driver/presentation/screens/home/trip_details_screen.
 import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
+import 'package:traveldesk_driver/core/utils/string_utils.dart';
 import '../../../data/models/trip_model.dart';
 import '../../providers/driver_provider.dart';
 import 'home_screen.dart';
@@ -113,7 +114,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                 labelColor: AppColors.lightPrimary,
                 unselectedLabelColor: Colors.grey,
                 isScrollable: true,
-                tabAlignment: TabAlignment.start,
+                tabAlignment: TabAlignment.center,
                 labelStyle: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
                 unselectedLabelStyle: GoogleFonts.poppins(fontSize: 14),
                 tabs: _tripTypeTabs.map((t) => Tab(text: t)).toList(),
@@ -589,7 +590,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
                         Icon(statusIcon, size: 16, color: statusColor),
                         const SizedBox(width: 6),
                         Text(
-                          trip.status.isEmpty ? 'Unknown' : trip.status,
+                          trip.status.isEmpty ? 'Unknown' : StringUtils.toTitleCase(trip.status),
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -726,8 +727,8 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
               _buildTripActionButtons(trip),
 
-              // Show invoice button only for normal request type
-              if (requestType.toLowerCase() == 'normal') ...[
+              // Show invoice button only for normal request type and completed trips
+              if (requestType.toLowerCase() == 'normal' && status == 'completed') ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -812,17 +813,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
           Row(
             children: [
               IconButton(
-                onPressed: () => _callDriver(trip),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
                 onPressed: () => _openMap(trip),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.green.withValues(alpha: 0.1),
@@ -870,17 +860,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
           Row(
             children: [
               IconButton(
-                onPressed: () => _callDriver(trip),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
                 onPressed: () => _openMap(trip),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.green.withValues(alpha: 0.1),
@@ -921,17 +900,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          IconButton(
-            onPressed: () => _callDriver(trip),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            icon: Icon(Ionicons.call_outline, color: Colors.blue, size: 20),
-          ),
-          const SizedBox(width: 8),
           IconButton(
             onPressed: () => _openMap(trip),
             style: IconButton.styleFrom(
@@ -1390,17 +1358,14 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
           ),
         );
 
-        // Navigate to trip tracking screen
-        if (tripDetails != null) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TripTrackingScreen(
-                tripId: tripId,
-                tripDetails: tripDetails,
-              ),
+        // Navigate to trip details screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TripDetailsScreen(
+              tripId: tripId,
             ),
-          );
-        }
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -1688,33 +1653,16 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   void _openMap(Trip trip) async {
     if (!mounted) return;
     try {
-      // Show loading indicator
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-
       // Get trip details for map navigation
       final driverProvider = Provider.of<DriverProvider>(context, listen: false);
       await driverProvider.getTripDetails(trip.id);
       
       if (!mounted) return;
-      
-      // Close loading dialog safely
-      try {
-        Navigator.of(context).pop();
-      } catch (e) {
-        print('Error closing loading dialog: $e');
-      }
 
       final tripDetails = driverProvider.tripDetails;
       
       if (mounted && tripDetails != null) {
-        // Navigate to trip tracking screen
+        // Navigate to trip tracking screen directly
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => TripTrackingScreen(
@@ -1737,10 +1685,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       }
     } catch (e) {
       if (mounted) {
-        try {
-          Navigator.of(context).pop(); // Try to close loading dialog
-        } catch (_) {}
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -2046,15 +1990,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
   }
 
   String _formatRequestType(String requestType) {
-    switch (requestType.toLowerCase()) {
-      case 'normal':
-        return 'Normal';
-      case 'corporate':
-        return 'Corporate';
-      case 'roster_auto':
-        return 'Roster Auto';
-      default:
-        return requestType;
-    }
+    return StringUtils.formatRequestType(requestType);
   }
 }

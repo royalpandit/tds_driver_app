@@ -5,6 +5,7 @@ class RideRequestOffer {
   final DateTime? respondedAt;
   final DateTime createdAt;
   final RideRequest rideRequest;
+  final bool alreadyScheduled;
 
   RideRequestOffer({
     required this.offerId,
@@ -13,6 +14,7 @@ class RideRequestOffer {
     this.respondedAt,
     required this.createdAt,
     required this.rideRequest,
+    this.alreadyScheduled = false,
   });
 
   factory RideRequestOffer.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class RideRequestOffer {
           : null,
       createdAt: DateTime.parse(json['created_at'] ?? ''),
       rideRequest: json['ride_request'] is Map<String, dynamic> ? RideRequest.fromJson(json['ride_request']) : RideRequest.fromJson({}),
+      alreadyScheduled: (json['already_scheduled'] == 1 || json['already_scheduled'] == true),
     );
   }
 }

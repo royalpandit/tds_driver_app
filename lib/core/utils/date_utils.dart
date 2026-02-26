@@ -6,8 +6,21 @@ class AppDateUtils {
       // Try parsing different date formats
       DateTime? dateTime;
       if (dateString.contains('/')) {
-        // Already formatted as YYYY/MM/DD
-        return dateString;
+        // Already formatted - try to parse and reformat to dd/MM/yyyy
+        try {
+          final parts = dateString.split('/');
+          if (parts.length == 3) {
+            // Check if it's yyyy/MM/dd format
+            if (parts[0].length == 4) {
+              dateTime = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+            } else {
+              // Already dd/MM/yyyy
+              return dateString;
+            }
+          }
+        } catch (_) {
+          return dateString;
+        }
       } else if (dateString.contains('-')) {
         // Parse YYYY-MM-DD format
         dateTime = DateTime.parse(dateString);
@@ -17,7 +30,7 @@ class AppDateUtils {
       }
 
       if (dateTime != null) {
-        return DateFormat('yyyy/MM/dd').format(dateTime);
+        return DateFormat('dd/MM/yyyy').format(dateTime);
       }
       return dateString; // Return original if parsing fails
     } catch (e) {
@@ -52,7 +65,7 @@ class AppDateUtils {
     try {
       final dateTime = DateTime.tryParse(dateTimeString);
       if (dateTime != null) {
-        final date = DateFormat('yyyy/MM/dd').format(dateTime);
+        final date = DateFormat('dd/MM/yyyy').format(dateTime);
         final time = DateFormat('hh:mma').format(dateTime).toLowerCase();
         return '$date $time';
       }

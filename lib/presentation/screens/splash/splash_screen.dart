@@ -135,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/New/Group 9757 (2).png',
+                      'assets/New/Group 9757.png',
                       height: 100,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => const Icon(

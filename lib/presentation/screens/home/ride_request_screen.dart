@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
+import '../../../core/utils/string_utils.dart';
 import '../../../data/models/trip_model.dart';
 import '../../providers/driver_provider.dart';
 import 'home_screen.dart';
@@ -195,14 +196,13 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 10, 20, 25),
+      padding: EdgeInsets.fromLTRB(10, MediaQuery.of(context).padding.top + 5, 20, 15),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF1C5479), Color(0xFF2E8BC0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         boxShadow: [
           BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
         ],
@@ -210,45 +210,21 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              Row(
-                children: [
-                  Image.asset(
-                    'assets/New/Group 9757.png',
-                    height: 30,
-                    errorBuilder: (_,__,___) => const SizedBox(),
-                  ),
-                  const SizedBox(width: 8),
-                  Image.asset(
-                    'assets/New/Group 9756.png',
-                    height: 25,
-                    errorBuilder: (_,__,___) => const SizedBox(),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Text(
+                'Ride Management',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ],
-          ),
-          const SizedBox(height: 15),
-          Text(
-            'Ride Management',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Manage your ride requests',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
           ),
         ],
       ),
@@ -371,7 +347,35 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
                   ),
                 ],
               ),
-              _buildStatusBadge(request.status),
+              Row(
+                children: [
+                  if (requestOffer.alreadyScheduled)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Ionicons.warning_outline, size: 12, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Scheduled',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  _buildStatusBadge(request.status),
+                ],
+              ),
             ],
           ),
 
@@ -384,7 +388,7 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  request.customer?.name ?? request.corporate?.name ?? 'Unknown Passenger',
+                  StringUtils.toTitleCase(request.customer?.name ?? request.corporate?.name ?? 'Unknown Passenger'),
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -579,7 +583,7 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
         break;
       default:
         color = Colors.grey;
-        text = status;
+        text = StringUtils.toTitleCase(status);
     }
 
     return Container(
@@ -652,6 +656,12 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               onPressed: () async {
                 Navigator.pop(context);
 
+                // If already_scheduled, block acceptance
+                if (requestOffer.alreadyScheduled) {
+                  _showAlreadyScheduledDialog();
+                  return;
+                }
+
                 final driverProvider =
                 Provider.of<DriverProvider>(context, listen: false);
 
@@ -667,14 +677,6 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
                   );
                 }
               },
-
-              // onPressed: () async {
-              //   // Close dialog first
-              //   Navigator.pop(context);
-              //
-              //   // Show OTP dialog for acceptance
-              //   _showOtpDialogForAcceptance(requestOffer);
-              // },
               child: Text(
                 'Accept',
                 style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.bold),
@@ -863,6 +865,42 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               child: Text(
                 'Verify & Accept',
                 style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAlreadyScheduledDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.warning_outline, color: Colors.orange),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Already Scheduled',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'You already have a ride scheduled on this day. You cannot accept another ride for the same day.',
+            style: GoogleFonts.poppins(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.poppins(color: AppColors.lightPrimary, fontWeight: FontWeight.w600),
               ),
             ),
           ],

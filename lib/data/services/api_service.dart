@@ -1198,7 +1198,36 @@ class ApiService {
     return data['status'] == true; // 👈 success only
   }
 
-  Future<dynamic> verifyTripOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId}) async {
+  /// Cancel passenger as no_show without OTP
+  Future<dynamic> cancelPassengerNoShow({
+    required int tripId,
+    required int passengerId,
+    required String cancelReason,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripVerifyOtp}');
+    print('🌐 TDS API: POST $url (CANCEL PASSENGER NO SHOW)');
+    final headers = await _getHeaders();
+    headers['Content-Type'] = 'application/json';
+    print('📋 Headers: $headers');
+    final body = jsonEncode({
+      'trip': tripId,
+      'action': 'no_show',
+      'passanger_id': passengerId,
+      'cancel_reason': cancelReason,
+    });
+    print('📝 Request Body: $body');
+    final response = await _client.post(url, headers: headers, body: body).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to cancel passenger. Please check your internet connection.');
+      },
+    );
+    print('📊 Response Status: ${response.statusCode}');
+    print('📄 Response Body: ${response.body}');
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> verifyTripOtp(int? tripId, String otp, {int? passengerId, int? rideRequestId, String? cancelReason, String? status}) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tripVerifyOtp}');
     print('🌐 TDS API: POST $url (VERIFY OTP)');
     final headers = await _getHeaders();
@@ -1209,6 +1238,8 @@ class ApiService {
       if (rideRequestId != null) 'ride_request_id': rideRequestId,
       'otp': otp,
       if (passengerId != null) 'passenger_id': passengerId,
+      if (cancelReason != null) 'cancel_reason': cancelReason,
+      if (status != null) 'status': status,
     });
     print('📝 Request Body: $body');
     final response = await _client.post(url, headers: headers, body: body).timeout(
