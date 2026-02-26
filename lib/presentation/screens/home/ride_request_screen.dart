@@ -347,7 +347,35 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
                   ),
                 ],
               ),
-              _buildStatusBadge(request.status),
+              Row(
+                children: [
+                  if (requestOffer.alreadyScheduled)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Ionicons.warning_outline, size: 12, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Scheduled',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  _buildStatusBadge(request.status),
+                ],
+              ),
             ],
           ),
 
@@ -628,6 +656,12 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               onPressed: () async {
                 Navigator.pop(context);
 
+                // If already_scheduled, block acceptance
+                if (requestOffer.alreadyScheduled) {
+                  _showAlreadyScheduledDialog();
+                  return;
+                }
+
                 final driverProvider =
                 Provider.of<DriverProvider>(context, listen: false);
 
@@ -643,14 +677,6 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
                   );
                 }
               },
-
-              // onPressed: () async {
-              //   // Close dialog first
-              //   Navigator.pop(context);
-              //
-              //   // Show OTP dialog for acceptance
-              //   _showOtpDialogForAcceptance(requestOffer);
-              // },
               child: Text(
                 'Accept',
                 style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.bold),
@@ -839,6 +865,42 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
               child: Text(
                 'Verify & Accept',
                 style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAlreadyScheduledDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.warning_outline, color: Colors.orange),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Already Scheduled',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'You already have a ride scheduled on this day. You cannot accept another ride for the same day.',
+            style: GoogleFonts.poppins(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.poppins(color: AppColors.lightPrimary, fontWeight: FontWeight.w600),
               ),
             ),
           ],

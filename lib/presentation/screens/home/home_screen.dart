@@ -598,6 +598,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 Navigator.pop(context);
 
+                // If already_scheduled, block acceptance
+                if (requestOffer.alreadyScheduled) {
+                  _showAlreadyScheduledDialog();
+                  return;
+                }
+
                 final driverProvider =
                 Provider.of<driver_provider.DriverProvider>(context, listen: false);
 
@@ -712,6 +718,42 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 'Reject',
                 style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAlreadyScheduledDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(Ionicons.warning_outline, color: Colors.orange),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Already Scheduled',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'You already have a ride scheduled on this day. You cannot accept another ride for the same day.',
+            style: GoogleFonts.poppins(color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: GoogleFonts.poppins(color: app_colors.AppColors.lightPrimary, fontWeight: FontWeight.w600),
               ),
             ),
           ],

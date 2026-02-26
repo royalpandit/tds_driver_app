@@ -661,6 +661,35 @@ class DriverProvider with ChangeNotifier {
     }
   }
 
+  /// Cancel passenger as no_show (no OTP required)
+  Future<Map<String, dynamic>?> cancelPassengerNoShow({
+    required int tripId,
+    required int passengerId,
+    required String cancelReason,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _apiService.cancelPassengerNoShow(
+        tripId: tripId,
+        passengerId: passengerId,
+        cancelReason: cancelReason,
+      );
+
+      // Invalidate cached trip details so next fetch gets fresh passenger status
+      tripDetailsCache.remove(tripId);
+
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   // Fetch expenses
   Future<bool> fetchExpenses({String? category, int? page, int? perPage}) async {
     _isLoading = true;

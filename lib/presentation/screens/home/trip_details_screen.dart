@@ -660,11 +660,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
   }
 
-  // ================= CANCEL PASSENGER =================
+  // ================= CANCEL PASSENGER (NO SHOW - No OTP required) =================
 
   void _showCancelPassengerDialog(int passengerId) {
     final reasonController = TextEditingController();
-    final otpController = TextEditingController();
 
     showDialog(
       context: context,
@@ -674,21 +673,16 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text(
+                "Mark this passenger as no-show? Enter the cancellation reason below.",
+                style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 16),
               TextField(
                 controller: reasonController,
                 maxLines: 2,
                 decoration: const InputDecoration(
                   hintText: "Enter cancellation reason",
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  hintText: "Enter 6 digit OTP",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -702,7 +696,6 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
             ElevatedButton(
               onPressed: () {
                 final reason = reasonController.text.trim();
-                final otp = otpController.text.trim();
                 if (reason.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -715,20 +708,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                   );
                   return;
                 }
-                if (otp.isEmpty || otp.length != 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Please enter a valid 6-digit OTP',
-                        style: GoogleFonts.poppins(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
                 Navigator.pop(context);
-                _cancelPassenger(passengerId, reason, otp);
+                _cancelPassenger(passengerId, reason);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -741,7 +722,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     );
   }
 
-  void _cancelPassenger(int passengerId, String reason, String otp) async {
+  void _cancelPassenger(int passengerId, String reason) async {
     final provider = Provider.of<DriverProvider>(context, listen: false);
 
     if (provider.tripDetails == null) {
@@ -758,13 +739,10 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     }
 
     try {
-      final result = await provider.verifyOtp(
-        widget.tripId,
-        otp,
+      final result = await provider.cancelPassengerNoShow(
+        tripId: widget.tripId,
         passengerId: passengerId,
-        rideRequestId: provider.tripDetails!.rideRequest.id,
         cancelReason: reason,
-        status: 'cancelled',
       );
 
       if (result != null && mounted) {
