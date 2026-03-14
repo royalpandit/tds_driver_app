@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <application
-        android:label="Traveldesk Solutions"
+        android:label="TDS DRIVER"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
