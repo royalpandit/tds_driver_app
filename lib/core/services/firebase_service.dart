@@ -1,9 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import '../../data/services/storage_service.dart';
 
 class FirebaseService {
   static final FirebaseService _instance = FirebaseService._internal();
@@ -12,6 +15,7 @@ class FirebaseService {
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final StorageService _storageService = StorageService();
   String? _fcmToken;
   GlobalKey<NavigatorState>? _navigatorKey;
 
@@ -120,8 +124,7 @@ class FirebaseService {
   }
 
   Future<void> _saveFCMToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('fcm_token', token);
+    await _storageService.saveFirebaseToken(token);
   }
 
   String? getFCMToken() {
@@ -129,8 +132,15 @@ class FirebaseService {
   }
 
   Future<String?> getSavedFCMToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fcm_token');
+    return _storageService.getFirebaseToken();
+  }
+
+  Future<void> saveFirebaseToken(String token) async {
+    await _saveFCMToken(token);
+  }
+
+  Future<String?> getSavedFirebaseToken() async {
+    return getSavedFCMToken();
   }
 
   Future<void> refreshFCMToken() async {
@@ -151,18 +161,54 @@ class FirebaseService {
     final notification = message.notification;
     final data = message.data;
 
-    if (notification == null) return;
-    
-    const androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      icon: '@drawable/notification_icon',
-    );
+    // Build title/body preferring notification payload, then data fields
+    final title = notification?.title ?? data['title'] ?? data['message_title'] ?? data['title_text'] ?? '';
+    final body = notification?.body ?? data['body'] ?? data['message'] ?? data['body_text'] ?? '';
+
+    // Determine image URL if provided
+    final imageUrl = data['image'] ?? data['image_url'] ?? notification?.android?.imageUrl ?? notification?.apple?.imageUrl;
+
+    AndroidNotificationDetails androidDetails;
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      try {
+        final bigPicturePath = await _downloadAndSaveFile(imageUrl.toString(), 'bigpicture_${message.messageId ?? DateTime.now().millisecondsSinceEpoch}');
+        final bigPicture = FilePathAndroidBitmap(bigPicturePath);
+        androidDetails = AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          icon: '@drawable/notification_icon',
+          styleInformation: BigPictureStyleInformation(bigPicture, hideExpandedLargeIcon: false),
+        );
+      } catch (e) {
+        debugPrint('❌ Failed to download notification image: $e');
+        androidDetails = const AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          icon: '@drawable/notification_icon',
+        );
+      }
+    } else {
+      androidDetails = const AndroidNotificationDetails(
+        'high_importance_channel',
+        'High Importance Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        icon: '@drawable/notification_icon',
+      );
+    }
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -170,18 +216,28 @@ class FirebaseService {
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _localNotifications.show(
       message.hashCode,
-      notification.title,
-      notification.body,
+      title.isNotEmpty ? title : null,
+      body.isNotEmpty ? body : null,
       notificationDetails,
-      payload: '${data['type']}|${data['ride_request_id'] ?? data['trip_id'] ?? ''}',
+      payload: '${data['type'] ?? ''}|${data['ride_request_id'] ?? data['trip_id'] ?? ''}|${data['image'] ?? ''}',
     );
+  }
+
+  Future<String> _downloadAndSaveFile(String url, String fileName) async {
+    final response = await http.get(Uri.parse(url));
+    final bytes = response.bodyBytes;
+    final directory = await getTemporaryDirectory();
+    final filePath = '${directory.path}/$fileName';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+    return filePath;
   }
 
   void _handleNotificationTap(String payload) {
@@ -327,21 +383,62 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('📋 Body: ${message.notification?.body}');
   debugPrint('📦 Data: ${message.data}');
   
-  // Show local notification for background messages
-  final notification = message.notification;
-  if (notification != null) {
+  // Show local notification for background messages (support data-only and images)
+  try {
+    final data = message.data;
+    final title = message.notification?.title ?? data['title'] ?? data['message_title'] ?? '';
+    final body = message.notification?.body ?? data['body'] ?? data['message'] ?? '';
+    final imageUrl = data['image'] ?? data['image_url'] ?? message.notification?.android?.imageUrl ?? message.notification?.apple?.imageUrl;
+
     final localNotifications = FlutterLocalNotificationsPlugin();
-    
-    const androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'This channel is used for important notifications.',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      icon: '@drawable/notification_icon',
-    );
+
+    AndroidNotificationDetails androidDetails;
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      try {
+        final response = await http.get(Uri.parse(imageUrl.toString()));
+        final bytes = response.bodyBytes;
+        final directory = await getTemporaryDirectory();
+        final filePath = '${directory.path}/bg_bigpicture_${message.messageId ?? DateTime.now().millisecondsSinceEpoch}';
+        final file = File(filePath);
+        await file.writeAsBytes(bytes, flush: true);
+
+        final bigPicture = FilePathAndroidBitmap(filePath);
+        androidDetails = AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          icon: '@drawable/notification_icon',
+          styleInformation: BigPictureStyleInformation(bigPicture, hideExpandedLargeIcon: false),
+        );
+      } catch (e) {
+        debugPrint('❌ Background image download failed: $e');
+        androidDetails = const AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          icon: '@drawable/notification_icon',
+        );
+      }
+    } else {
+      androidDetails = const AndroidNotificationDetails(
+        'high_importance_channel',
+        'High Importance Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        icon: '@drawable/notification_icon',
+      );
+    }
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -349,18 +446,16 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       presentSound: true,
     );
 
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+    final notificationDetails = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    final data = message.data;
     await localNotifications.show(
       message.hashCode,
-      notification.title,
-      notification.body,
+      title.isNotEmpty ? title : null,
+      body.isNotEmpty ? body : null,
       notificationDetails,
-      payload: '${data['type']}|${data['ride_request_id'] ?? data['trip_id'] ?? ''}',
+      payload: '${data['type'] ?? ''}|${data['ride_request_id'] ?? data['trip_id'] ?? ''}|${data['image'] ?? ''}',
     );
+  } catch (e) {
+    debugPrint('❌ Error showing background local notification: $e');
   }
 }

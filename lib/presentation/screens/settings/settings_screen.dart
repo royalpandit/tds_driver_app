@@ -1,9 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _appVersion = 'Loading...';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _appVersion = '${packageInfo.version} (${packageInfo.buildNumber})';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +152,7 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(height: 12),
                         _buildSettingsCard(
                           context,
-                          child: const ListTile(
+                          child: ListTile(
                             leading: Icon(Icons.info_outline, color: Colors.black),
                             title: Text(
                               'App Version',
@@ -137,7 +162,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                             subtitle: Text(
-                              '1.0.0',
+                              _appVersion,
                               style: TextStyle(fontFamily: 'Roboto'),
                             ),
                           ),

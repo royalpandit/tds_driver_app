@@ -8,6 +8,7 @@ import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_type_model.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
+import 'package:traveldesk_driver/data/models/otp_model.dart';
 import '../../core/constants/api_constants.dart';
 import '../models/ride_booking_model.dart';
 import '../models/driver_model.dart';
@@ -63,6 +64,97 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> getAppVersionSettings({
+    required String platform,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.appVersion}')
+        .replace(queryParameters: {'platform': platform});
+    final headers = await _getHeaders();
+    final response = await _client.get(url, headers: headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to fetch app version');
+      },
+    );
+
+    final responseData = _handleResponse(response);
+    if (responseData is Map<String, dynamic>) {
+      return responseData;
+    }
+
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, String>> getLatestAppVersionsByPlatform(String platform) async {
+    final responseData = await getAppVersionSettings(platform: platform);
+    final data = responseData['data'];
+    final versions = <String, String>{};
+
+    if (data is Map<String, dynamic>) {
+      data.forEach((key, value) {
+        if (value is String && value.isNotEmpty) {
+          versions[key] = value;
+        }
+      });
+    } else if (data is Map) {
+      data.forEach((key, value) {
+        if (value is String && value.isNotEmpty) {
+          versions[key.toString()] = value.toString();
+        }
+      });
+    }
+
+    return versions;
+  }
+
+  Future<dynamic> storeAppSetting({
+    required String type,
+    required String platform,
+    required String value,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.appSetting}');
+    final headers = await _getHeaders();
+    final body = jsonEncode({
+      'type': type,
+      'platform': platform,
+      'value': value,
+    });
+
+    final response = await _client.post(url, headers: headers, body: body).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to store app setting');
+      },
+    );
+
+    return _handleResponse(response);
+  }
+
+  static bool isVersionOutdated(String currentVersion, String requiredVersion) {
+    final currentParts = _normalizeVersion(currentVersion);
+    final requiredParts = _normalizeVersion(requiredVersion);
+    final maxLength = currentParts.length > requiredParts.length ? currentParts.length : requiredParts.length;
+
+    for (var index = 0; index < maxLength; index++) {
+      final currentPart = index < currentParts.length ? currentParts[index] : 0;
+      final requiredPart = index < requiredParts.length ? requiredParts[index] : 0;
+
+      if (currentPart < requiredPart) {
+        return true;
+      }
+      if (currentPart > requiredPart) {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  static List<int> _normalizeVersion(String version) {
+    final sanitized = version.split('+').first.split('-').first;
+    return sanitized.split('.').map((part) => int.tryParse(part) ?? 0).toList();
+  }
+
   // Authentication endpoints
   Future<dynamic> sendOtp(String contact, String userType, String purpose) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.sendOtp}');
@@ -94,13 +186,20 @@ class ApiService {
     String? phone,
     String? password,
   }) async {
+    // Validate and normalize email
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
+      throw Exception('Invalid email address: $normalizedEmail');
+    }
+    
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.sendOtp}');
     debugPrint('🌐 TDS API: POST $url (DRIVER OTP SEND)');
+    debugPrint('📧 Email (normalized): "$normalizedEmail"');
     final headers = await _getHeaders();
     debugPrint('📋 Headers: $headers');
 
     final Map<String, dynamic> body = {
-      'contact': email,
+      'contact': normalizedEmail,
       'user_type': 'driver',
       'purpose': purpose,
     };
@@ -118,6 +217,7 @@ class ApiService {
     debugPrint('📝 Request Body: $bodyJson');
     debugPrint('✅ user_type is correctly set to: "driver"');
     debugPrint('🎯 Purpose: $purpose');
+    debugPrint('⚠️ IMPORTANT: Backend must create OTP with contact="$normalizedEmail" and hide_api=0');
 
     // Try with different content types
     final headersWithForm = Map<String, String>.from(headers);
@@ -148,7 +248,13 @@ class ApiService {
       
       debugPrint('📊 Response Status: ${response.statusCode}');
       debugPrint('📄 Response Body: ${response.body}');
-      return _handleResponse(response);
+      
+      final result = _handleResponse(response);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('✅ OTP sent successfully to: $normalizedEmail');
+        debugPrint('🔍 Next step: Fetch OTP list using getOtpList("$normalizedEmail", purpose: "$purpose")');
+      }
+      return result;
     } catch (e) {
       debugPrint('❌ Request failed: $e');
       rethrow;
@@ -169,15 +275,17 @@ class ApiService {
       'contact': contact,
       'otp_code': otpCode,
       'user_type': userType,
+      'firebase_token': firebaseToken ?? '',
     };
     
     // Add registration fields if provided (for register purpose)
     if (firstName != null) body['first_name'] = firstName;
     if (lastName != null) body['last_name'] = lastName;
     if (gender != null) body['gender'] = gender.toString();
-    if (firebaseToken != null) body['firebase_token'] = firebaseToken;
     
     final bodyJson = jsonEncode(body);
+    debugPrint('🔐 verifyOtp request body: $bodyJson');
+    debugPrint('🔐 verifyOtp includes firebase_token: ${body.containsKey('"'"'firebase_token'"'"')}');
     // print('📝 Request Body: $bodyJson');
     // print('✅ user_type is correctly set to: "$userType"');
     if (userType == 'corporateuser') {
@@ -1086,6 +1194,128 @@ class ApiService {
     print('📊 Response Status: ${response.statusCode}');
     print('📄 Response Body: ${response.body}');
     return _handleResponse(response);
+  }
+
+  /// Get OTP list for a given email
+  /// Returns list of unverified OTPs (hide_api = 0) grouped by purpose
+  Future<List<OtpRecord>> getOtpList(String email, {String? purpose}) async {
+    final queryParams = <String, String>{
+      if (purpose != null && purpose.isNotEmpty) 'purpose': purpose,
+    };
+    
+    // Trim and validate email
+    final trimmedEmail = email.trim().toLowerCase();
+    if (trimmedEmail.isEmpty) {
+      throw Exception('Email cannot be empty when fetching OTP list');
+    }
+    
+    final url = Uri.parse(
+      '${ApiConstants.baseUrl}${ApiConstants.getOtpList}$trimmedEmail'
+    ).replace(queryParameters: queryParams);
+    
+    debugPrint('🌐 TDS API: GET $url (GET OTP LIST)');
+    debugPrint('📧 Email (trimmed): "$trimmedEmail"');
+    debugPrint('🎯 Purpose filter: "$purpose"');
+    final headers = await _getHeaders();
+    debugPrint('📋 Headers: $headers');
+    
+    final response = await _client.get(url, headers: headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to fetch OTP list. Please check your internet connection.');
+      },
+    );
+    
+    debugPrint('📊 Response Status: ${response.statusCode}');
+    debugPrint('📄 Response Body: ${response.body}');
+    
+    try {
+      final responseData = _handleResponse(response);
+      final data = responseData['data'] as List<dynamic>? ?? [];
+      debugPrint('✅ OTP records fetched: ${data.length} record(s)');
+      
+      if (data.isEmpty) {
+        debugPrint('⚠️ IMPORTANT: No OTP records found for $trimmedEmail with purpose: $purpose');
+        debugPrint('📝 Backend considerations:');
+        debugPrint('   - Check if OTP was created with correct contact field (should match email)');
+        debugPrint('   - Verify hide_api field is 0 (not 1 or NULL)');
+        debugPrint('   - Check if OTP purpose matches the filter: $purpose');
+        debugPrint('   - Verify OTP has not expired');
+      }
+      
+      return data.map((item) => OtpRecord.fromJson(item)).toList();
+    } catch (e) {
+      debugPrint('❌ Error fetching OTP list: $e');
+      rethrow;
+    }
+  }
+
+  /// Update OTP hide status to mark OTPs as used/hidden
+  /// Only records with hide_api = 0 will be updated
+  /// Updates all OTP records for the given email and purpose
+  Future<int> updateOtpHide(String email, String purpose) async {
+    // Validate and normalize email
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || !normalizedEmail.contains('@')) {
+      throw Exception('Invalid email address: $normalizedEmail');
+    }
+    
+    // Validate purpose
+    if (purpose.trim().isEmpty) {
+      throw Exception('Purpose cannot be empty');
+    }
+    
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateOtpHide}');
+    
+    debugPrint('🌐 TDS API: POST $url (UPDATE OTP HIDE)');
+    debugPrint('📧 Email (normalized): "$normalizedEmail"');
+    debugPrint('🎯 Purpose: "$purpose"');
+    
+    final headers = await _getHeaders();
+    headers['Content-Type'] = 'application/json';
+    debugPrint('📋 Headers: $headers');
+    
+    final body = jsonEncode({
+      'email': normalizedEmail,
+      'contact': normalizedEmail,
+      'purpose': purpose,
+    });
+    
+    debugPrint('📝 Request Body: $body');
+    debugPrint('⚠️ IMPORTANT: Backend will update all OTPs where:');
+    debugPrint('   - contact/email = "$normalizedEmail"');
+    debugPrint('   - purpose = "$purpose"');
+    debugPrint('   - hide_api = 0 (will be set to 1)');
+    
+    final response = await _client.post(url, headers: headers, body: body).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout: Unable to update OTP status. Please check your internet connection.');
+      },
+    );
+    
+    debugPrint('📊 Response Status: ${response.statusCode}');
+    debugPrint('📄 Response Body: ${response.body}');
+    
+    try {
+      final responseData = _handleResponse(response);
+      final updatedCount = responseData['updated_count'] as int? ?? 0;
+      
+      if (updatedCount == 0) {
+        debugPrint('⚠️ WARNING: No OTP records updated. Reasons could be:');
+        debugPrint('   - No OTPs found for email: "$normalizedEmail"');
+        debugPrint('   - No OTPs found for purpose: "$purpose"');
+        debugPrint('   - All OTPs already have hide_api = 1 (already hidden)');
+        debugPrint('   - All OTPs have expired');
+      } else {
+        debugPrint('✅ OTP Hide updated successfully. Records updated: $updatedCount');
+      }
+      
+      return updatedCount;
+    } catch (e) {
+      debugPrint('❌ Error updating OTP hide: $e');
+      rethrow;
+    }
   }
 
   Future<List<Trip>> getTrips() async {

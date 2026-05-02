@@ -10,6 +10,26 @@ class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   final StorageService _storageService = StorageService();
 
+  Future<String?> _getFirebaseTokenForRequest() async {
+    final firebaseService = FirebaseService();
+    var firebaseToken = await firebaseService.getSavedFCMToken();
+
+    if (firebaseToken == null || firebaseToken.isEmpty) {
+      await firebaseService.refreshFCMToken();
+      firebaseToken = await firebaseService.getSavedFCMToken();
+    }
+
+    return firebaseToken;
+  }
+
+  String? _extractSessionToken(dynamic response) {
+    final user = response?['data']?['user'];
+    if (user is Map<String, dynamic>) {
+      return user['firebase_token'] ?? user['api_token'];
+    }
+    return null;
+  }
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -41,19 +61,15 @@ class AuthProvider with ChangeNotifier {
 
     try {
       // Get FCM token for login (not for registration)
-      String? fcmToken;
+      String? firebaseToken;
       if (firstName == null && lastName == null && gender == null) {
-        final firebaseService = FirebaseService();
-        fcmToken = await firebaseService.getSavedFCMToken();
+        firebaseToken = await _getFirebaseTokenForRequest();
       }
       
-      final verifyResponse = await _apiService.verifyOtp(contact, otpCode, userType, firstName: firstName, lastName: lastName, gender: gender, firebaseToken: fcmToken);
+      final verifyResponse = await _apiService.verifyOtp(contact, otpCode, userType, firstName: firstName, lastName: lastName, gender: gender, firebaseToken: firebaseToken);
       
       // Check if verify-otp already returned the token (TDS API behavior)
-      String? token;
-      if (verifyResponse['data'] != null && verifyResponse['data']['user'] != null) {
-        token = verifyResponse['data']['user']['api_token'];
-      }
+      final token = _extractSessionToken(verifyResponse);
       
       if (token != null) {
         await _storageService.saveToken(token);
@@ -123,10 +139,7 @@ class AuthProvider with ChangeNotifier {
         gender: gender,
       );
 
-      String? token;
-      if (response['data'] != null && response['data']['user'] != null) {
-        token = response['data']['user']['api_token'];
-      }
+      final token = _extractSessionToken(response);
 
       if (token != null) {
         await _storageService.saveToken(token);
@@ -156,10 +169,7 @@ class AuthProvider with ChangeNotifier {
     try {
       final response = await _apiService.login(email, otpCode);
 
-      String? token;
-      if (response != null && response['data'] != null && response['data']['user'] != null) {
-        token = response['data']['user']['api_token'];
-      }
+      final token = _extractSessionToken(response);
 
       if (token != null) {
         await _storageService.saveToken(token);
@@ -234,16 +244,12 @@ class AuthProvider with ChangeNotifier {
 
     try {
       // Get FCM token
-      final firebaseService = FirebaseService();
-      final fcmToken = await firebaseService.getSavedFCMToken();
+      final firebaseToken = await _getFirebaseTokenForRequest();
       
-      final verifyResponse = await _apiService.verifyOtp(email, otpCode, 'driver', firebaseToken: fcmToken);
+      final verifyResponse = await _apiService.verifyOtp(email, otpCode, 'driver', firebaseToken: firebaseToken);
       
       // Check if verify-otp already returned the token (TDS API behavior)
-      String? token;
-      if (verifyResponse['data'] != null && verifyResponse['data']['user'] != null) {
-        token = verifyResponse['data']['user']['api_token'];
-      }
+      final token = _extractSessionToken(verifyResponse);
       
       if (token != null) {
         await _storageService.saveToken(token);
@@ -318,8 +324,7 @@ class AuthProvider with ChangeNotifier {
 
     try {
       // Get FCM token from Firebase
-      final firebaseService = FirebaseService();
-      final fcmToken = await firebaseService.getSavedFCMToken();
+      final firebaseToken = await _getFirebaseTokenForRequest();
       
       final response = await _apiService.registerDriver(
         firstName: firstName,
@@ -368,13 +373,10 @@ class AuthProvider with ChangeNotifier {
         badgeNumber: badgeNumber,
         badgeIssueDate: badgeIssueDate,
         driverImage: driverImage,
-        firebaseToken: fcmToken,
+        firebaseToken: firebaseToken,
       );
 
-      String? token;
-      if (response['data'] != null && response['data']['user'] != null) {
-        token = response['data']['user']['api_token'];
-      }
+      final token = _extractSessionToken(response);
 
       if (token != null) {
         await _storageService.saveToken(token);

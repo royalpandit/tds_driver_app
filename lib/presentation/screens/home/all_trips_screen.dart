@@ -505,7 +505,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
       Color statusColor;
       IconData statusIcon;
 
-      final status = (trip.status ?? '').toLowerCase();
+      final status = trip.status.toLowerCase();
       switch (status) {
         case 'completed':
           statusColor = Colors.green;
@@ -789,7 +789,7 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
   Widget _buildTripActionButtons(Trip trip) {
     try {
-      final status = (trip.status ?? '').toLowerCase();
+      final status = trip.status.toLowerCase();
 
       if (status == 'planned' || status == 'confirmed') {
         return Row(
@@ -1274,7 +1274,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
 
       // Get trip details for tracking
       await driverProvider.getTripDetails(tripId);
-      final tripDetails = driverProvider.tripDetails;
       
       // Refresh trips list
       driverProvider.fetchTrips();
@@ -1567,24 +1566,24 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
     }
   }
 
-  void _callDriver(Trip trip) {
-    if (!mounted) return;
-    try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Call feature not implemented yet',
-            style: GoogleFonts.poppins(color: Colors.white),
-          ),
-          backgroundColor: Colors.blue,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Error in _callDriver: $e');
-    }
-  }
+  // void _callDriver(Trip trip) {
+  //   if (!mounted) return;
+  //   try {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text(
+  //           'Call feature not implemented yet',
+  //           style: GoogleFonts.poppins(color: Colors.white),
+  //         ),
+  //         backgroundColor: Colors.blue,
+  //         behavior: SnackBarBehavior.floating,
+  //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     debugPrint('Error in _callDriver: $e');
+  //   }
+  // }
 
   void _openMap(Trip trip) async {
     if (!mounted) return;
@@ -1858,99 +1857,6 @@ class _AllTripsScreenState extends State<AllTripsScreen> with SingleTickerProvid
         _tripUploads.remove(trip.id);
       }
     });
-  }
-  void _showUploadBottomSheetq(Trip trip) {
-    if (!mounted) return;
-    final uploads = _tripUploads[trip.id] ?? [];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Uploads for Trip #${trip.id}', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              if (uploads.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text('No uploads yet', style: GoogleFonts.poppins(color: Colors.grey[700])),
-                )
-              else
-                ...uploads.map((f) => ListTile(title: Text(f))).toList(),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: const Text('Camera'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: () async {
-                        // Use image picker to select an image and upload
-                        final picker = ImagePicker();
-                        final picked = await picker.pickImage(source: ImageSource.gallery);
-                        if (picked != null) {
-                          final file = File(picked.path);
-                          final provider = Provider.of<DriverProvider>(context, listen: false);
-                          final success = await provider.uploadMultipleImages(
-                            tripId: trip.id,
-                            imageFiles: [file],
-                          );
-                          if (success) {
-                            final list = _tripUploads[trip.id] ?? [];
-                            list.add(file.path.split('/').last);
-                            _tripUploads[trip.id] = list;
-                          } else {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(provider.errorMessage ?? 'Upload failed')),
-                              );
-                            }
-                          }
-                        }
-
-                        // Refresh bottom sheet by closing and reopening
-                        if (mounted) {
-                          Navigator.of(context).pop();
-                          Future.delayed(const Duration(milliseconds: 200), () => _showUploadBottomSheet(trip));
-                        }
-                      },
-                      child: const Text('Upload'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   void _showGenerateConfirmation(int tripId) {

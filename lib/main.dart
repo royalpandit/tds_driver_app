@@ -1,10 +1,12 @@
  import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:traveldesk_driver/presentation/providers/auth_provider.dart';
 import 'firebase_options.dart';
 import 'core/services/firebase_service.dart';
+import 'data/services/api_service.dart';
  import 'core/theme/app_theme.dart';
  import 'package:firebase_auth/firebase_auth.dart' as fb;
 
@@ -53,6 +55,24 @@ void main() async {
       debugPrint('Firebase service initialization failed: $e, continuing without Firebase messaging');
     });
     firebaseService.setNavigatorKey(navigatorKey);
+
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final apiService = ApiService();
+      final platform = kIsWeb
+          ? 'web'
+          : (defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android');
+
+      if (platform == 'android' || platform == 'ios') {
+        await apiService.storeAppSetting(
+          type: 'driver_app_version',
+          platform: platform,
+          value: packageInfo.version,
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to persist app version on startup: $e');
+    }
 
     runApp(const MyApp());
   } catch (e) {
