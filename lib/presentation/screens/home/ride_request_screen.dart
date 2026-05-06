@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../../widgets/floating_bottom_nav.dart';
 import '../../../core/constants/app_colors.dart';
@@ -787,90 +788,240 @@ class _RideRequestScreenState extends State<RideRequestScreen> with TickerProvid
 
   void _showOtpDialogForAcceptance(RideRequestOffer requestOffer) {
     final TextEditingController otpController = TextEditingController();
+    Timer? autoRefreshTimer;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(Ionicons.shield_checkmark_outline, color: Colors.blue),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Enter OTP to Accept Ride',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Please enter the OTP sent to the customer to verify and accept this ride request.',
-                style: GoogleFonts.poppins(color: Colors.grey[700], fontSize: 14),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'OTP',
-                  hintText: 'Enter 6-digit OTP',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: Icon(Ionicons.key_outline),
-                ),
-                style: GoogleFonts.poppins(),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w600),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final otp = otpController.text.trim();
-                if (otp.isEmpty || otp.length != 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Please enter a valid 6-digit OTP',
-                        style: GoogleFonts.poppins(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.orange,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Fetch OTP list on dialog open
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (autoRefreshTimer == null || !autoRefreshTimer!.isActive) {
+                _fetchAndRefreshOtpList(setState);
+                // Set up auto-refresh timer (every 30 seconds)
+                autoRefreshTimer = Timer.periodic(
+                  const Duration(seconds: 30),
+                  (_) {
+                    if (mounted) {
+                      _fetchAndRefreshOtpList(setState);
+                    }
+                  },
+                );
+              }
+            });
+
+            return WillPopScope(
+              onWillPop: () async {
+                autoRefreshTimer?.cancel();
+                // Update OTP hide status when dialog closes
+                final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+                if (driverProvider.driverDetails?.personalInfo.email != null) {
+                  await driverProvider.updateOtpHideStatus(
+                    driverProvider.driverDetails!.personalInfo.email,
+                    'ride_offer_accept',
                   );
-                  return;
                 }
-                Navigator.pop(context);
-                _proceedToAcceptRideRequest(requestOffer, otp);
+                return true;
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Row(
+                  children: [
+                    Icon(Ionicons.shield_checkmark_outline, color: Colors.blue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Enter OTP to Accept Ride',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Please enter the OTP sent to the customer to verify and accept this ride request.',
+                        style: GoogleFonts.poppins(color: Colors.grey[700], fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: otpController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: 'OTP',
+                          hintText: 'Enter 6-digit OTP',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: Icon(Ionicons.key_outline),
+                        ),
+                        style: GoogleFonts.poppins(),
+                      ),
+                      const SizedBox(height: 20),
+                      // OTP List Section
+                      Consumer<DriverProvider>(
+                        builder: (context, driverProvider, child) {
+                          if (driverProvider.otpList.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                'No OTP records found',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Available OTPs (Auto-refresh: 30s)',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                constraints: const BoxConstraints(maxHeight: 150),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: List.generate(
+                                      driverProvider.otpList.length,
+                                      (index) {
+                                        final otp = driverProvider.otpList[index];
+                                        return Material(
+                                          child: InkWell(
+                                            onTap: () {
+                                              otpController.text = otp.otpCode;
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '${otp.purpose} - ${otp.otpCode}',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Expires: ${otp.expiresAt}',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 10,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                  ),
+                                                  if (index < driverProvider.otpList.length - 1)
+                                                    Divider(color: Colors.grey[300], height: 8),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      autoRefreshTimer?.cancel();
+                      Navigator.pop(context);
+                      // Update OTP hide status when cancel is clicked
+                      final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+                      if (driverProvider.driverDetails?.personalInfo.email != null) {
+                        driverProvider.updateOtpHideStatus(
+                          driverProvider.driverDetails!.personalInfo.email,
+                          'ride_offer_accept',
+                        );
+                      }
+                    },
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final otp = otpController.text.trim();
+                      if (otp.isEmpty || otp.length != 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Please enter a valid 6-digit OTP',
+                              style: GoogleFonts.poppins(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                        return;
+                      }
+                      autoRefreshTimer?.cancel();
+                      Navigator.pop(context);
+                      _proceedToAcceptRideRequest(requestOffer, otp);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      'Verify & Accept',
+                      style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                'Verify & Accept',
-                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      autoRefreshTimer?.cancel();
+    });
+  }
+
+  /// Helper method to fetch and refresh OTP list with setState
+  void _fetchAndRefreshOtpList(StateSetter setState) {
+    final driverProvider = Provider.of<DriverProvider>(context, listen: false);
+    if (driverProvider.driverDetails?.personalInfo.email != null) {
+      driverProvider.fetchOtpList(
+        driverProvider.driverDetails!.personalInfo.email,
+        purpose: 'ride_offer_accept',
+      ).then((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    }
   }
 
   void _showAlreadyScheduledDialog() {

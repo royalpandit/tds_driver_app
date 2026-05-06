@@ -79,7 +79,7 @@ void main() {
                 'name': 'John Doe',
                 'email': 'user@example.com',
                 'phone': '1234567890',
-                'api_token': 'abcdef123456'
+                'firebase_token': 'abcdef123456'
               }
             }
           }), 200);
@@ -91,7 +91,7 @@ void main() {
       final result = await apiService.login('user@example.com', '123456');
 
       expect(result['status'], true);
-      expect(result['data']['user']['api_token'], 'abcdef123456');
+      expect(result['data']['user']['firebase_token'], 'abcdef123456');
     });
 
     test('resendOtp returns success when API call is successful', () async {

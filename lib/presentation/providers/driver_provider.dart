@@ -4,6 +4,7 @@ import 'package:traveldesk_driver/data/models/fuel/fuel_price_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_station_model.dart';
 import 'package:traveldesk_driver/data/models/fuel/fuel_type_model.dart';
 import 'package:traveldesk_driver/data/models/trip_details_response_model.dart';
+import 'package:traveldesk_driver/data/models/otp_model.dart';
 import '../../data/models/driver_model.dart';
 import '../../data/models/trip_model.dart';
 import '../../data/services/api_service.dart';
@@ -11,7 +12,6 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:open_filex/open_filex.dart';
-import 'dart:typed_data';
 class DriverProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
@@ -56,6 +56,10 @@ class DriverProvider with ChangeNotifier {
 
   List<Expense> _expenses = [];
   List<Expense> get expenses => _expenses;
+
+  // ================= OTP STATES =================
+  List<OtpRecord> _otpList = [];
+  List<OtpRecord> get otpList => _otpList;
 
   // List<Map<String, dynamic>> _fuelHistory = [];
   // List<Map<String, dynamic>> get fuelHistory => _fuelHistory;
@@ -1066,6 +1070,47 @@ class DriverProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ================= OTP METHODS =================
+  /// Fetch OTP list for a given email
+  /// Optionally filter by purpose (e.g., 'ride_offer_accept', 'trip_status_change')
+  Future<bool> fetchOtpList(String email, {String? purpose}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _otpList = await _apiService.getOtpList(email, purpose: purpose);
+      _isLoading = false;
+      notifyListeners();
+      debugPrint('✅ Fetched ${_otpList.length} OTP records for $email');
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      debugPrint('❌ Error fetching OTP list: $e');
+      return false;
+    }
+  }
+
+  /// Update OTP hide status to mark OTPs as used
+  /// Called when user closes OTP dialog or goes back
+  Future<bool> updateOtpHideStatus(String email, String purpose) async {
+    try {
+      final updatedCount = await _apiService.updateOtpHide(email, purpose);
+      debugPrint('✅ Updated $updatedCount OTP records as hidden');
+      
+      // Refresh the OTP list after update
+      await fetchOtpList(email, purpose: purpose);
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error updating OTP hide status: $e');
       _errorMessage = e.toString();
       notifyListeners();
       return false;

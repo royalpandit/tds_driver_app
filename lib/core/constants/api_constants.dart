@@ -18,6 +18,10 @@ class ApiConstants {
   static const String driverRideRequestDetails = '/api/driver/ride-request-offers/';
   static const String driverRideRequestAction = '/api/driver/ride-request-offers/';
 
+  // App version endpoints
+  static const String appVersion = '/api/app-version';
+  static const String appSetting = '/api/app-setting';
+
   // Fuel endpoints
   static const String fuel = '/api/fuel';
 
@@ -26,6 +30,10 @@ class ApiConstants {
   static const String tripDetails = '/api/trip-details/';
   static const String tripUpdateStatus = '/api/trip-update-status';
   static const String tripVerifyOtp = '/api/trip-verify-otp';
+
+  // OTP endpoints
+  static const String getOtpList = '/api/get-otp-list/';
+  static const String updateOtpHide = '/api/update-otp-hide';
   // File upload endpoints
   static const String uploadSignature = '/api/upload-signature';
   static const String uploadImages = '/api/upload-multiple-images';

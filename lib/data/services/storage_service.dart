@@ -5,7 +5,8 @@ class StorageService {
   static const String _isLoggedInKey = 'is_logged_in';
   static const String _userContactKey = 'user_contact';
   static const String _userTypeKey = 'user_type';
-  static const String _fcmTokenKey = 'fcm_token';
+  static const String _firebaseTokenKey = 'firebase_token';
+  static const String _legacyFcmTokenKey = 'fcm_token';
   static const String _hasSeenOnboardingKey = 'has_seen_onboarding';
 
   Future<void> saveToken(String token) async {
@@ -55,8 +56,25 @@ class StorageService {
     await prefs.remove(_isLoggedInKey);
     await prefs.remove(_userContactKey);
     await prefs.remove(_userTypeKey);
-    await prefs.remove(_fcmTokenKey);
+    await prefs.remove(_firebaseTokenKey);
+    await prefs.remove(_legacyFcmTokenKey);
     // Keep onboarding flag so user doesn't see it again
+  }
+
+  Future<void> saveFirebaseToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_firebaseTokenKey, token);
+  }
+
+  Future<String?> getFirebaseToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_firebaseTokenKey) ?? prefs.getString(_legacyFcmTokenKey);
+  }
+
+  Future<void> clearFirebaseToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_firebaseTokenKey);
+    await prefs.remove(_legacyFcmTokenKey);
   }
   
   Future<void> setHasSeenOnboarding(bool value) async {

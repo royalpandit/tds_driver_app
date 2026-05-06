@@ -6,12 +6,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:traveldesk_driver/core/utils/string_utils.dart';
 import 'dart:typed_data';
 import 'package:signature/signature.dart';
+import 'dart:async';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart' as app_date_utils;
 import '../../providers/driver_provider.dart';
 import '../../../data/services/google_maps_service.dart';
-import 'package:image_picker/image_picker.dart';
 import 'trip_tracking_screen.dart';
 
 class TripDetailsScreen extends StatefulWidget {
@@ -598,28 +598,50 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
     showDialog(
       context: context,
       builder: (_) {
-        return AlertDialog(
-          title: const Text("Enter OTP"),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            maxLength: 6,
-            decoration: const InputDecoration(hintText: "Enter 6 digit OTP"),
+        return WillPopScope(
+          onWillPop: () async {
+            // Call updateOtpHide when dialog is closed without verification
+            final provider = Provider.of<DriverProvider>(context, listen: false);
+            if (provider.driverDetails?.personalInfo.email != null) {
+              await provider.updateOtpHideStatus(
+                provider.driverDetails!.personalInfo.email,
+                'trip_status_change',
+              );
+            }
+            return true;
+          },
+          child: AlertDialog(
+            title: const Text("Enter OTP"),
+            content: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(hintText: "Enter 6 digit OTP"),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Call updateOtpHide when cancel is clicked
+                  final provider = Provider.of<DriverProvider>(context, listen: false);
+                  if (provider.driverDetails?.personalInfo.email != null) {
+                    provider.updateOtpHideStatus(
+                      provider.driverDetails!.personalInfo.email,
+                      'trip_status_change',
+                    );
+                  }
+                },
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _verifyOtp(passengerId, controller.text);
+                },
+                child: const Text("Verify"),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _verifyOtp(passengerId, controller.text);
-              },
-              child: const Text("Verify"),
-            ),
-          ],
         );
       },
     );
@@ -650,6 +672,14 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       );
 
       if (result != null && mounted) {
+        // Call updateOtpHide after successful verification
+        if (provider.driverDetails?.personalInfo.email != null) {
+          await provider.updateOtpHideStatus(
+            provider.driverDetails!.personalInfo.email,
+            'trip_status_change',
+          );
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
