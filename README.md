@@ -629,5 +629,11 @@ Unauthorized copying, distribution, or use is strictly prohibited.
   ---
   
   ### 🚖 TravelDesk Solutions - Your Journey, Our Priority
-  
+git checkout main
+git pull origin main
+git checkout prathamesh
+git pull origin prathamesh
+git checkout main
+git merge prathamesh
+git push origin main
 </div>
