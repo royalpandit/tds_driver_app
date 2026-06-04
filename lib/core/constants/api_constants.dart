@@ -1,6 +1,6 @@
 class ApiConstants {
- // static const String baseUrl = 'https://traveldesksolutions.in';
-  static const String baseUrl = 'https://dev.traveldesksolutions.in';
+  static const String baseUrl = 'https://traveldesksolutions.in';
+ // static const String baseUrl = 'https://dev.traveldesksolutions.in';
 
   // Authentication endpoints
   static const String sendOtp = '/api/send-otp';

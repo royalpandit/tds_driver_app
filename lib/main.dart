@@ -1,11 +1,10 @@
  import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
-import 'package:package_info_plus/package_info_plus.dart';
+ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:traveldesk_driver/presentation/providers/auth_provider.dart';
-import 'firebase_options.dart';
-import 'core/services/firebase_service.dart';
+ import 'core/services/firebase_service.dart';
 import 'data/services/api_service.dart';
  import 'core/theme/app_theme.dart';
  import 'package:firebase_auth/firebase_auth.dart' as fb;
@@ -24,7 +23,24 @@ void main() async {
 
     // Initialize Firebase at app startup so the default app exists.
     // Use `DefaultFirebaseOptions.currentPlatform` for web and platforms when available.
-    try {
+    /*await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );*/
+    await Firebase.initializeApp();
+   /* try {
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
+    } catch (e) {
+      // If Firebase initialization fails, log and continue so app can still run.
+      debugPrint('Firebase.initializeApp() failed in main: $e');
+
+    }*/
+    /*try {
       if (kIsWeb) {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       } else {
@@ -34,7 +50,7 @@ void main() async {
     } catch (e) {
       // If Firebase initialization fails, log and continue so app can still run.
       debugPrint('Firebase.initializeApp() failed in main: $e');
-    }
+    }*/
 
     // Ensure any existing Firebase user is signed out, then initialize services
     try {

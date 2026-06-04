@@ -371,7 +371,11 @@ class FirebaseService {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (Firebase.apps.isEmpty) {
     try {
+
       await Firebase.initializeApp();
+     /* await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );*/
     } catch (e) {
       debugPrint('❌ Firebase.initializeApp() failed in background handler: $e');
       return;
