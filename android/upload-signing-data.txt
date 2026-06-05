@@ -1,0 +1,43 @@
+Android Upload Signing Data
+===========================
+Keystore file: upload-keystore.jks
+Keystore path: android\\upload-keystore.jks
+PEM export: android\\upload-certificate.pem
+Alias: upload
+Store password: TDS@Upload2026!
+Key password: TDS@Upload2026!
+
+key.properties
+--------------
+storePassword=TDS@Upload2026!
+keyPassword=TDS@Upload2026!
+keyAlias=upload
+storeFile=../upload-keystore.jks
+
+Certificate details
+-------------------
+Alias name: upload
+Creation date: Jun 5, 2026
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[1]:
+Owner: CN=TravelDesk Driver, OU=Mobile, O=TravelDesk Solutions, L=Unknown, ST=Unknown, C=IN
+Issuer: CN=TravelDesk Driver, OU=Mobile, O=TravelDesk Solutions, L=Unknown, ST=Unknown, C=IN
+Serial number: 8b3e0cde77255cb6
+Valid from: Fri Jun 05 11:34:36 IST 2026 until: Tue Oct 21 11:34:36 IST 2053
+Certificate fingerprints:
+	 SHA1: 69:93:57:86:6D:0B:33:4C:80:66:E4:78:BA:8B:05:AE:A3:A5:37:1E
+	 SHA256: EA:84:4D:5F:8D:56:AB:0C:AE:75:DE:93:54:C6:BD:2B:87:08:AD:08:F2:B1:F6:0D:3F:4E:B9:1A:37:3F:72:1D
+Signature algorithm name: SHA384withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: B0 44 E5 CE 39 A4 FF 09   DF C9 B1 E7 B1 C6 63 DF  .D..9.........c.
+0010: C0 05 D1 97                                        ....
+]
+]
